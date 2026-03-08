@@ -25,3 +25,18 @@ Thumbs.db
 
 # Coverage
 coverage/
+
+# Credentials & secrets
+*.pem
+*.key
+credentials.json
+token.json
+
+# Data & databases
+data/
+*.db
+*.sqlite
+*.sqlite3
+
+# Temp & scratch
+.tmp/
