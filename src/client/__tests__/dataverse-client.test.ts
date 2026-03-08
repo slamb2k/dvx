@@ -98,4 +98,113 @@ describe('DataverseClient', () => {
       expect(result[0]).toEqual({ accountid: '1', name: 'Acme' })
     })
   })
+
+  describe('createRecord', () => {
+    it('posts data and returns GUID from OData-EntityId header', async () => {
+      const schemaResponse = {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          LogicalName: 'account',
+          DisplayName: { UserLocalizedLabel: { Label: 'Account' } },
+          EntitySetName: 'accounts',
+          PrimaryIdAttribute: 'accountid',
+          PrimaryNameAttribute: 'name',
+          Attributes: [],
+        }),
+      }
+      const createResponse = {
+        ok: true,
+        status: 204,
+        headers: new Map([['OData-EntityId', 'https://org.crm.dynamics.com/api/data/v9.2/accounts(00000000-0000-0000-0000-000000000099)']]),
+        json: async () => ({}),
+      }
+      // Mock headers.get for the create response
+      createResponse.headers.get = (key: string) => createResponse.headers.get(key)
+      const headersObj = {
+        get: (key: string) => key === 'OData-EntityId' ? 'https://org.crm.dynamics.com/api/data/v9.2/accounts(00000000-0000-0000-0000-000000000099)' : null,
+      }
+
+      mockFetch
+        .mockResolvedValueOnce(schemaResponse)
+        .mockResolvedValueOnce({ ok: true, status: 204, headers: headersObj, json: async () => ({}) })
+
+      const id = await client.createRecord('account', { name: 'Test' })
+      expect(id).toBe('00000000-0000-0000-0000-000000000099')
+    })
+  })
+
+  describe('updateRecord', () => {
+    it('patches data for existing record', async () => {
+      const schemaResponse = {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          LogicalName: 'account',
+          DisplayName: { UserLocalizedLabel: { Label: 'Account' } },
+          EntitySetName: 'accounts',
+          PrimaryIdAttribute: 'accountid',
+          PrimaryNameAttribute: 'name',
+          Attributes: [],
+        }),
+      }
+      const patchResponse = { ok: true, status: 204, json: async () => ({}) }
+
+      mockFetch.mockResolvedValueOnce(schemaResponse).mockResolvedValueOnce(patchResponse)
+
+      await expect(client.updateRecord('account', '00000000-0000-0000-0000-000000000001', { name: 'Updated' }))
+        .resolves.toBeUndefined()
+    })
+  })
+
+  describe('deleteRecord', () => {
+    it('sends DELETE request for record', async () => {
+      const schemaResponse = {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          LogicalName: 'account',
+          DisplayName: { UserLocalizedLabel: { Label: 'Account' } },
+          EntitySetName: 'accounts',
+          PrimaryIdAttribute: 'accountid',
+          PrimaryNameAttribute: 'name',
+          Attributes: [],
+        }),
+      }
+      const deleteResponse = { ok: true, status: 204, json: async () => ({}) }
+
+      mockFetch.mockResolvedValueOnce(schemaResponse).mockResolvedValueOnce(deleteResponse)
+
+      await expect(client.deleteRecord('account', '00000000-0000-0000-0000-000000000001'))
+        .resolves.toBeUndefined()
+    })
+  })
+
+  describe('dryRun mode', () => {
+    it('does not make HTTP calls in dryRun mode', async () => {
+      const authManager = createMockAuthManager()
+      const dryClient = new DataverseClient(authManager, undefined, { dryRun: true })
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      // Schema fetch still needs to happen for entitySetName
+      const schemaResponse = {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          LogicalName: 'account',
+          DisplayName: { UserLocalizedLabel: { Label: 'Account' } },
+          EntitySetName: 'accounts',
+          PrimaryIdAttribute: 'accountid',
+          PrimaryNameAttribute: 'name',
+          Attributes: [],
+        }),
+      }
+      mockFetch.mockResolvedValueOnce(schemaResponse)
+
+      const id = await dryClient.createRecord('account', { name: 'Test' })
+      expect(id).toBe('dry-run')
+      // Only schema fetch should have been called, not the create POST
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+    })
+  })
 })

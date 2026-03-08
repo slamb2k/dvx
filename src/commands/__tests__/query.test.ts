@@ -28,8 +28,8 @@ describe('query', () => {
     expect(JSON.parse(calls[0] as string)).toEqual(records)
   })
 
-  it('throws on missing entity set name', async () => {
-    await expect(query({ odata: '', output: 'json', pageAll: false }))
-      .rejects.toThrow('OData expression must start with the entity set name')
+  it('throws when no query source provided', async () => {
+    await expect(query({ output: 'json', pageAll: false }))
+      .rejects.toThrow('Either --odata, --fetchxml, or --file is required')
   })
 })
