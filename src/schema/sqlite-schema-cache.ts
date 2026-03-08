@@ -48,4 +48,8 @@ export class SqliteSchemaCache implements ISchemaCache {
   clear(): void {
     this.db.prepare('DELETE FROM schema_cache').run()
   }
+
+  close(): void {
+    this.db.close()
+  }
 }

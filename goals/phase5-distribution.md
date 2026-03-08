@@ -67,6 +67,22 @@ Add developer experience features.
 - [ ] Binary: smoke test on each platform (CI matrix)
 - [ ] HTTP transport: connection, tool invocation, streaming
 
+## Known Dependencies
+
+`better-sqlite3` is a native Node.js addon (`.node` binary) and has implications
+for both npm distribution and standalone binary packaging:
+
+- `node-gyp` must be available at install time for source builds; users without a
+  C++ toolchain will need pre-built binaries.
+- When producing a standalone binary via `bun build --compile` or `pkg`, the
+  `.node` addon cannot be bundled inside the single-file output — it must be
+  distributed alongside the executable (e.g. in a zip archive or installer).
+- Pre-built binaries for each target platform (Linux x64, macOS arm64, macOS x64,
+  Windows x64) should be obtained via `node-pre-gyp` or `pkg-fetch` prebuilds and
+  included in the GitHub Release artifacts.
+- The install/wrapper script must set `NODE_PATH` or equivalent so the executable
+  can locate the `.node` file at runtime.
+
 ## Definition of Done
 
 `npm i -g dvx` works, standalone binaries available on GitHub Releases,
