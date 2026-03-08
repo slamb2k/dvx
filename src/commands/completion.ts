@@ -1,5 +1,7 @@
 export type Shell = 'bash' | 'zsh' | 'powershell';
 
+const COMMANDS = ['auth', 'entities', 'schema', 'query', 'get', 'create', 'update', 'upsert', 'delete', 'batch', 'action', 'mcp', 'init', 'completion'];
+
 const BASH_COMPLETION = `
 # dvx bash completion
 _dvx_completion() {
@@ -8,7 +10,7 @@ _dvx_completion() {
   cur="\${COMP_WORDS[COMP_CWORD]}"
   prev="\${COMP_WORDS[COMP_CWORD-1]}"
 
-  local commands="auth entities schema query get create update upsert delete batch action mcp init completion"
+  local commands="${COMMANDS.join(' ')}"
   local auth_commands="create select login list"
 
   case "\${prev}" in
@@ -29,7 +31,7 @@ _dvx() {
     '1: :->cmd' \\
     '*: :->args'
   case \$state in
-    cmd) _values 'commands' auth entities schema query get create update upsert delete batch action mcp init completion ;;
+    cmd) _values 'commands' ${COMMANDS.join(' ')} ;;
     args) case \$words[2] in
       auth) _values 'auth commands' create select login list ;;
       completion) _values 'shells' bash zsh powershell ;;
@@ -42,7 +44,7 @@ _dvx "\$@"
 const POWERSHELL_COMPLETION = `
 Register-ArgumentCompleter -Native -CommandName dvx -ScriptBlock {
   param(\$wordToComplete, \$commandAst, \$cursorPosition)
-  \$commands = @('auth','entities','schema','query','get','create','update','upsert','delete','batch','action','mcp','init','completion')
+  \$commands = @(${COMMANDS.map(c => `'${c}'`).join(',')})
   \$commands | Where-Object { \$_ -like "\${wordToComplete}*" } | ForEach-Object {
     [System.Management.Automation.CompletionResult]::new(\$_, \$_, 'ParameterValue', \$_)
   }
