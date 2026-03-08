@@ -5,6 +5,7 @@ import { promptConfirm } from '../utils/confirm.js'
 interface DeleteOptions {
   confirm: boolean
   dryRun: boolean
+  callerObjectId?: string
 }
 
 export async function deleteRecord(entityName: string, id: string, options: DeleteOptions): Promise<void> {
@@ -18,7 +19,7 @@ export async function deleteRecord(entityName: string, id: string, options: Dele
     }
   }
 
-  const { client } = await createClient({ dryRun: options.dryRun })
+  const { client } = await createClient({ dryRun: options.dryRun, callerObjectId: options.callerObjectId })
   await client.deleteRecord(entityName, id)
   console.error('Record deleted successfully')
 }
