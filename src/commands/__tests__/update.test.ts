@@ -16,6 +16,7 @@ describe('updateRecord', () => {
   const validId = '00000000-0000-0000-0000-000000000001'
 
   beforeEach(() => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
     mockUpdateRecord.mockReset()
   })

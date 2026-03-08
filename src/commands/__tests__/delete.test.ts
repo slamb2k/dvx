@@ -25,6 +25,7 @@ describe('deleteRecord', () => {
   let originalIsTTY: boolean | undefined
 
   beforeEach(() => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
     mockDeleteRecord.mockReset()
     mockPromptConfirm.mockReset()
