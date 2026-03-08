@@ -1,0 +1,34 @@
+{
+  "name": "dvx",
+  "version": "0.1.0",
+  "description": "Agent-first CLI and MCP server for Microsoft Dataverse CE/Sales/Service",
+  "type": "module",
+  "bin": {
+    "dvx": "./dist/index.js"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": ["dataverse", "dynamics365", "mcp", "cli"],
+  "license": "MIT",
+  "dependencies": {
+    "@azure/msal-node": "^2.16.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "commander": "^12.1.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "tsup": "^8.3.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

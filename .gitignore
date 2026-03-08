@@ -1,0 +1,27 @@
+node_modules/
+dist/
+*.js
+*.d.ts
+*.js.map
+!tsup.config.ts
+!vitest.config.ts
+
+# Environment
+.env
+.env.*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# dvx local config
+.dvx/
+
+# Coverage
+coverage/
