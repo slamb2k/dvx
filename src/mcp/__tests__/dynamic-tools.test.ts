@@ -30,7 +30,7 @@ const fixtureSchema: EntitySchemaCacheEntry = {
 
 describe('buildEntityToolDefinitions', () => {
   it('generates 4 tools per entity', () => {
-    const tools = buildEntityToolDefinitions([fixtureSchema])
+    const { tools } = buildEntityToolDefinitions([fixtureSchema])
 
     expect(tools).toHaveLength(4)
     const names = tools.map((t) => t.name)
@@ -41,7 +41,7 @@ describe('buildEntityToolDefinitions', () => {
   })
 
   it('get_ and update_ have id in required', () => {
-    const tools = buildEntityToolDefinitions([fixtureSchema])
+    const { tools } = buildEntityToolDefinitions([fixtureSchema])
     const getTool = tools.find((t) => t.name === 'get_account')!
     const updateTool = tools.find((t) => t.name === 'update_account')!
 
@@ -50,7 +50,7 @@ describe('buildEntityToolDefinitions', () => {
   })
 
   it('returns empty list for empty schemas array', () => {
-    const tools = buildEntityToolDefinitions([])
+    const { tools } = buildEntityToolDefinitions([])
     expect(tools).toHaveLength(0)
   })
 
@@ -60,8 +60,13 @@ describe('buildEntityToolDefinitions', () => {
       logicalName: 'contact',
       entitySetName: 'contacts',
     }
-    const tools = buildEntityToolDefinitions([fixtureSchema, schema2])
+    const { tools } = buildEntityToolDefinitions([fixtureSchema, schema2])
     expect(tools).toHaveLength(8)
+  })
+
+  it('populates entitySetMap from schemas', () => {
+    const { entitySetMap } = buildEntityToolDefinitions([fixtureSchema])
+    expect(entitySetMap.get('account')).toBe('accounts')
   })
 })
 
