@@ -45,6 +45,19 @@ describe('entities', () => {
     expect(JSON.parse(calls[0] as string)).toEqual(data)
   })
 
+  it('outputs ndjson format — one JSON object per entity', async () => {
+    mockListEntities.mockResolvedValue([
+      { logicalName: 'account', displayName: 'Account', entitySetName: 'accounts' },
+      { logicalName: 'contact', displayName: 'Contact', entitySetName: 'contacts' },
+    ])
+    await entities({ output: 'ndjson' })
+
+    const calls = vi.mocked(console.log).mock.calls.map((c) => c[0] as string)
+    expect(calls).toHaveLength(2)
+    expect(JSON.parse(calls[0]!)).toEqual({ name: 'account', displayName: 'Account', entitySetName: 'accounts' })
+    expect(JSON.parse(calls[1]!)).toEqual({ name: 'contact', displayName: 'Contact', entitySetName: 'contacts' })
+  })
+
   it('propagates errors from listEntities', async () => {
     mockListEntities.mockRejectedValue(new Error('API unavailable'))
 

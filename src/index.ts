@@ -76,7 +76,7 @@ auth
 program
   .command('entities')
   .description('List all entities in the environment')
-  .addOption(new Option('--output <format>', 'Output format').choices(['json', 'table']).default('table'))
+  .addOption(new Option('--output <format>', 'Output format').choices(['json', 'table', 'ndjson']).default('table'))
   .action(async (opts) => {
     await entities({ output: opts.output })
   })

@@ -2,7 +2,7 @@ import { createClient } from '../client/create-client.js'
 import { renderTable } from '../utils/table.js'
 
 interface EntitiesOptions {
-  output: 'json' | 'table'
+  output: 'json' | 'table' | 'ndjson'
 }
 
 export async function entities(options: EntitiesOptions): Promise<void> {
@@ -12,6 +12,10 @@ export async function entities(options: EntitiesOptions): Promise<void> {
 
   if (options.output === 'json') {
     console.log(JSON.stringify(entityList, null, 2))
+  } else if (options.output === 'ndjson') {
+    for (const e of entityList) {
+      console.log(JSON.stringify({ name: e.logicalName, displayName: e.displayName, entitySetName: e.entitySetName }))
+    }
   } else {
     if (entityList.length === 0) {
       console.log('No entities found.')
