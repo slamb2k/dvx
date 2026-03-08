@@ -13,15 +13,19 @@ jobs:
           - os: ubuntu-latest
             target: linux-x64
             pkg_target: node18-linux-x64
+            binary: dvx
           - os: macos-latest
             target: darwin-arm64
             pkg_target: node18-macos-arm64
+            binary: dvx
           - os: macos-13
             target: darwin-x64
             pkg_target: node18-macos-x64
+            binary: dvx
           - os: windows-latest
             target: win-x64
             pkg_target: node18-win-x64
+            binary: dvx.exe
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -44,8 +48,7 @@ jobs:
         run: |
           ADDON=$(find node_modules/better-sqlite3 -name "*.node" | head -1)
           cp "$ADDON" better_sqlite3.node
-          zip dvx-${{ matrix.target }}.zip dvx better_sqlite3.node || \
-          zip dvx-${{ matrix.target }}.zip dvx.exe better_sqlite3.node
+          zip dvx-${{ matrix.target }}.zip ${{ matrix.binary }} better_sqlite3.node
       - uses: softprops/action-gh-release@v2
         with:
           files: dvx-${{ matrix.target }}.zip
