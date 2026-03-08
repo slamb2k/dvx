@@ -1,3 +1,10 @@
+export interface ISchemaCache {
+  get(entityName: string): EntitySchemaCacheEntry | undefined
+  set(entry: EntitySchemaCacheEntry): void
+  invalidate(entityName: string): void
+  clear(): void
+}
+
 export interface AttributeDefinition {
   logicalName: string
   displayName: string
@@ -21,7 +28,7 @@ export interface EntitySchemaCacheEntry {
 
 const DEFAULT_TTL_MS = 300_000 // 5 minutes
 
-export class SchemaCache {
+export class SchemaCache implements ISchemaCache {
   private cache = new Map<string, EntitySchemaCacheEntry>()
   private ttlMs: number
 
@@ -48,6 +55,10 @@ export class SchemaCache {
       cachedAt: new Date(),
       ttlMs: this.ttlMs,
     })
+  }
+
+  invalidate(entityName: string): void {
+    this.cache.delete(entityName.toLowerCase())
   }
 
   clear(): void {
