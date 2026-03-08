@@ -1,5 +1,4 @@
-import { AuthManager } from '../auth/auth-manager.js'
-import { DataverseClient } from '../client/dataverse-client.js'
+import { createClient } from '../client/create-client.js'
 
 interface SchemaOptions {
   output: 'json'
@@ -7,8 +6,7 @@ interface SchemaOptions {
 }
 
 export async function schema(entityName: string, options: SchemaOptions): Promise<void> {
-  const authManager = new AuthManager()
-  const client = new DataverseClient(authManager)
+  const { client } = await createClient()
 
   const entry = await client.getEntitySchema(entityName, options.noCache)
 

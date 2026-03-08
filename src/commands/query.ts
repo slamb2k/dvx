@@ -1,6 +1,4 @@
-import { AuthManager } from '../auth/auth-manager.js'
-import { DataverseClient } from '../client/dataverse-client.js'
-import { SchemaCache } from '../schema/schema-cache.js'
+import { createClient } from '../client/create-client.js'
 
 interface QueryOptions {
   odata: string
@@ -11,9 +9,7 @@ interface QueryOptions {
 }
 
 export async function query(options: QueryOptions): Promise<void> {
-  const authManager = new AuthManager()
-  const schemaCache = new SchemaCache()
-  const client = new DataverseClient(authManager, schemaCache)
+  const { client } = await createClient()
 
   // Extract entity set name from OData expression
   // The OData expression should be like: entitySetName?$filter=...
