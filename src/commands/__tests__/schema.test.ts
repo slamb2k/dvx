@@ -1,19 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { schema } from '../schema.js'
 
-const mockGetEntitySchema = vi.fn()
+const { mockGetEntitySchema } = vi.hoisted(() => ({
+  mockGetEntitySchema: vi.fn(),
+}))
 
-vi.mock('../../auth/auth-manager.js', () => {
-  const MockAuthManager = vi.fn().mockImplementation(() => ({}))
-  return { AuthManager: MockAuthManager }
-})
-
-vi.mock('../../client/dataverse-client.js', () => {
-  const MockDataverseClient = vi.fn().mockImplementation(() => ({
-    getEntitySchema: mockGetEntitySchema,
-  }))
-  return { DataverseClient: MockDataverseClient }
-})
+vi.mock('../../client/create-client.js', () => ({
+  createClient: vi.fn().mockResolvedValue({
+    authManager: {},
+    client: { getEntitySchema: mockGetEntitySchema },
+  }),
+}))
 
 describe('schema', () => {
   beforeEach(() => {

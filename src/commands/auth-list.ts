@@ -1,11 +1,12 @@
-import { AuthManager } from '../auth/auth-manager.js'
+import { createClient } from '../client/create-client.js'
+import { renderTable } from '../utils/table.js'
 
 interface AuthListOptions {
   output: 'json' | 'table'
 }
 
 export async function authList(options: AuthListOptions): Promise<void> {
-  const authManager = new AuthManager()
+  const { authManager } = await createClient()
   const profiles = authManager.listProfiles()
 
   if (profiles.length === 0) {
@@ -20,23 +21,10 @@ export async function authList(options: AuthListOptions): Promise<void> {
       environmentUrl: p.profile.environmentUrl,
     })), null, 2))
   } else {
-    const maxName = Math.max(...profiles.map((p) => p.name.length), 4)
-    const maxUrl = Math.max(...profiles.map((p) => p.profile.environmentUrl.length), 3)
-
-    console.log(
-      '  ' +
-      'Name'.padEnd(maxName + 2) +
-      'URL',
-    )
-    console.log('  ' + '-'.repeat(maxName + maxUrl + 4))
-
-    for (const p of profiles) {
+    const rows = profiles.map((p) => {
       const marker = p.active ? '*' : ' '
-      console.log(
-        `${marker} ` +
-        p.name.padEnd(maxName + 2) +
-        p.profile.environmentUrl,
-      )
-    }
+      return [marker, p.name, p.profile.environmentUrl]
+    })
+    console.log(renderTable(rows, [' ', 'Name', 'URL']))
   }
 }

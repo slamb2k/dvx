@@ -1,6 +1,6 @@
-import { AuthManager } from '../auth/auth-manager.js'
-import { DataverseClient } from '../client/dataverse-client.js'
+import { createClient } from '../client/create-client.js'
 import { validateGuid } from '../utils/validation.js'
+import { renderTable } from '../utils/table.js'
 
 interface GetOptions {
   fields?: string
@@ -9,8 +9,7 @@ interface GetOptions {
 
 export async function get(entityName: string, id: string, options: GetOptions): Promise<void> {
   const validatedId = validateGuid(id)
-  const authManager = new AuthManager()
-  const client = new DataverseClient(authManager)
+  const { client } = await createClient()
 
   const fields = options.fields?.split(',').map((f) => f.trim()).filter((f) => f.length > 0)
   const record = await client.getRecord(entityName, validatedId, fields)
@@ -23,11 +22,7 @@ export async function get(entityName: string, id: string, options: GetOptions): 
       console.log('No fields returned.')
       return
     }
-    const maxField = Math.max(...entries.map(([k]) => k.length), 5)
-    console.log('Field'.padEnd(maxField + 2) + 'Value')
-    console.log('-'.repeat(maxField + 40))
-    for (const [key, value] of entries) {
-      console.log(key.padEnd(maxField + 2) + String(value ?? ''))
-    }
+    const rows = entries.map(([key, value]) => [key, String(value ?? '')])
+    console.log(renderTable(rows, ['Field', 'Value']))
   }
 }

@@ -67,4 +67,36 @@ describe('withRetry', () => {
     expect(result).toBe('ok')
     expect(fn).toHaveBeenCalledTimes(3)
   })
+
+  it('uses Retry-After header value when present on 429', async () => {
+    const error = new DataverseError('rate limited', 429, undefined, 2)
+    const fn = vi.fn()
+      .mockRejectedValueOnce(error)
+      .mockResolvedValue('ok')
+
+    const start = Date.now()
+    const result = await withRetry(fn, { baseDelayMs: 100, maxRetries: 3 })
+    const elapsed = Date.now() - start
+
+    expect(result).toBe('ok')
+    expect(fn).toHaveBeenCalledTimes(2)
+    // Retry-After is 2 seconds = 2000ms; should wait ~2000ms, not 100ms (base delay)
+    expect(elapsed).toBeGreaterThanOrEqual(1500)
+  })
+
+  it('caps Retry-After delay at maxDelayMs', async () => {
+    const error = new DataverseError('rate limited', 429, undefined, 60)
+    const fn = vi.fn()
+      .mockRejectedValueOnce(error)
+      .mockResolvedValue('ok')
+
+    const start = Date.now()
+    const result = await withRetry(fn, { baseDelayMs: 1, maxRetries: 3, maxDelayMs: 50 })
+    const elapsed = Date.now() - start
+
+    expect(result).toBe('ok')
+    expect(fn).toHaveBeenCalledTimes(2)
+    // Should be capped at 50ms, not 60000ms
+    expect(elapsed).toBeLessThan(500)
+  })
 })

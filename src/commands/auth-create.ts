@@ -1,5 +1,5 @@
-import { AuthManager } from '../auth/auth-manager.js'
 import { AuthProfile } from '../auth/auth-profile.js'
+import { createClient } from '../client/create-client.js'
 import { validateUrl } from '../utils/validation.js'
 
 interface AuthCreateOptions {
@@ -22,7 +22,7 @@ export async function authCreate(options: AuthCreateOptions): Promise<void> {
     clientSecret: options.clientSecret,
   }
 
-  const authManager = new AuthManager()
+  const { authManager } = await createClient()
   authManager.createProfile(profile)
 
   // Validate connection by acquiring a token

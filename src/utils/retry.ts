@@ -30,10 +30,10 @@ export async function withRetry<T>(
       // Only retry on 429 (rate limited) or 5xx (server errors)
       if (error instanceof DataverseError) {
         if (error.statusCode === 429 || error.statusCode >= 500) {
-          const delay = Math.min(
-            opts.baseDelayMs * Math.pow(2, attempt),
-            opts.maxDelayMs,
-          )
+          // Use Retry-After header value if available, otherwise exponential backoff
+          const delay = error.retryAfterSeconds
+            ? Math.min(error.retryAfterSeconds * 1000, opts.maxDelayMs)
+            : Math.min(opts.baseDelayMs * Math.pow(2, attempt), opts.maxDelayMs)
           await sleep(delay)
           continue
         }

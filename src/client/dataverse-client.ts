@@ -93,7 +93,17 @@ export class DataverseClient {
       } catch {
         // ignore parse errors
       }
-      throw new DataverseError(errorMessage, response.status, errorCode)
+
+      let retryAfterSeconds: number | undefined
+      const retryAfterHeader = response.headers.get('Retry-After')
+      if (retryAfterHeader) {
+        const parsed = Number(retryAfterHeader)
+        if (!Number.isNaN(parsed) && parsed > 0) {
+          retryAfterSeconds = parsed
+        }
+      }
+
+      throw new DataverseError(errorMessage, response.status, errorCode, retryAfterSeconds)
     }
 
     return response

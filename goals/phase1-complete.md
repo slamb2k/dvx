@@ -52,7 +52,7 @@ commands, and reaching test coverage targets.
 - [x] Table output for `dvx entities` — handle empty results gracefully
 - [x] Error messages: user-friendly for common failures (no profile, bad credentials, 401, 403)
 - [x] `--output json` flag consistency across all commands
-- [ ] `DVX_DEBUG=true` logging verified working
+- [x] `DVX_DEBUG=true` logging verified working
 
 ## Dependencies
 
