@@ -1,5 +1,7 @@
-import { Command } from 'commander'
+import { Command, Option } from 'commander'
 import { authCreate } from './commands/auth-create.js'
+import { authList } from './commands/auth-list.js'
+import { authSelect } from './commands/auth-select.js'
 import { entities } from './commands/entities.js'
 import { schema } from './commands/schema.js'
 import { query } from './commands/query.js'
@@ -34,11 +36,27 @@ auth
     })
   })
 
+auth
+  .command('list')
+  .description('List all authentication profiles')
+  .addOption(new Option('--output <format>', 'Output format').choices(['json', 'table']).default('table'))
+  .action(async (opts) => {
+    await authList({ output: opts.output })
+  })
+
+auth
+  .command('select')
+  .description('Switch active authentication profile')
+  .argument('<profile>', 'Profile name to activate')
+  .action(async (profileName) => {
+    await authSelect(profileName)
+  })
+
 // Entity list
 program
   .command('entities')
   .description('List all entities in the environment')
-  .option('--output <format>', 'Output format: json or table', 'table')
+  .addOption(new Option('--output <format>', 'Output format').choices(['json', 'table']).default('table'))
   .action(async (opts) => {
     await entities({ output: opts.output })
   })
@@ -48,7 +66,7 @@ program
   .command('schema')
   .description('Get entity schema with attribute definitions')
   .argument('<entity>', 'Entity logical name')
-  .option('--output <format>', 'Output format', 'json')
+  .addOption(new Option('--output <format>', 'Output format').choices(['json', 'table']).default('json'))
   .option('--no-cache', 'Force live fetch, bypass cache')
   .action(async (entityName, opts) => {
     await schema(entityName, { output: opts.output, noCache: !opts.cache })
@@ -62,7 +80,7 @@ program
   .option('--fields <fields>', 'Comma-separated field names to select')
   .option('--page-all', 'Stream all pages as NDJSON', false)
   .option('--max-rows <n>', 'Maximum rows to return', parseInt)
-  .option('--output <format>', 'Output format: json, ndjson, or table', 'json')
+  .addOption(new Option('--output <format>', 'Output format').choices(['json', 'ndjson', 'table']).default('json'))
   .action(async (opts) => {
     await query({
       odata: opts.odata,
@@ -80,8 +98,9 @@ program
   .argument('<entity>', 'Entity logical name')
   .argument('<id>', 'Record GUID')
   .option('--fields <fields>', 'Comma-separated field names to select')
+  .addOption(new Option('--output <format>', 'Output format').choices(['json', 'table']).default('json'))
   .action(async (entityName, id, opts) => {
-    await get(entityName, id, { fields: opts.fields })
+    await get(entityName, id, { fields: opts.fields, output: opts.output })
   })
 
 // Error handling
@@ -98,9 +117,11 @@ async function main(): Promise<void> {
       if (process.env['DVX_DEBUG'] === 'true') {
         console.error(error.stack)
       }
+    } else {
+      console.error('Unknown error:', error)
     }
     process.exit(1)
   }
 }
 
-export default main()
+export default main
