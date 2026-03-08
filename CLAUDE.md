@@ -90,3 +90,59 @@ Start with **Phase 1** from `SPEC.md`:
 - `dvx get <entity> <id>`
 
 Do not implement mutations, FetchXML, batch, or MCP surface until Phase 1 commands are working and tested.
+
+## Operating Framework: GOTCHA
+
+This project uses the **GOTCHA Framework** — a 6-layer architecture for
+agentic AI systems. LLMs handle reasoning; deterministic tools handle execution.
+
+**GOT** (The Engine):
+- **Goals** (`goals/`) — Process definitions. Check `goals/manifest.md` first.
+- **Orchestration** — You (the AI). Read goals, delegate to tools, handle errors.
+- **Tools** (`tools/`) — Scripts. Check `tools/manifest.md` first.
+
+**CHA** (The Context):
+- **Context** (`context/`) — Domain knowledge, reference material
+- **Hard Prompts** (`hardprompts/`) — Reusable instruction templates
+- **Args** (`args/`) — Behaviour settings (YAML/JSON)
+
+### Operating Rules
+
+1. **Check goals first** — Before any task, read `goals/manifest.md`
+2. **Check tools first** — Before writing code, read `tools/manifest.md`
+3. **Fix and document** — When tools fail, fix them and update the goal
+4. **Never modify goals without permission** — Goals are living documentation
+5. **Communicate when stuck** — Explain what is missing, do not guess
+
+## Build Methodology: BRACE
+
+See `goals/build_app.md` for the full workflow:
+- **B**rief — Define problem, users, success metrics
+- **R**esearch — Data schema, integrations, stack proposal
+- **A**rchitect — Design structure, validate all connections
+- **C**onstruct — Build DB first, then API, then UI
+- **E**valuate — Functional, integration, edge case, acceptance testing
+
+## Question & Assumption Accountability
+
+Nothing gets silently dropped. Every open question, assumption, and deferred
+decision must be explicitly recorded and revisited.
+
+- When you make an assumption, **state it explicitly** and record it
+- When a question cannot be answered immediately, log it as an open item
+- When you defer a fix or skip an edge case, document why and what triggers it
+- At the end of each task, review all assumptions and open questions
+- Present unresolved items to the user with context and suggested actions
+- Unresolved items go to `goals/` as follow-ups, to CLAUDE.md as "Known Issues",
+  or to memory for future session awareness
+- At the start of new work, check for outstanding items from previous sessions
+- Never close a task with unacknowledged open questions
+
+## Guardrails
+
+- Always check manifests before creating new goals or tools
+- Verify tool output format before chaining into another tool
+- Do not assume APIs support batch operations — check first
+- Preserve intermediate outputs when workflows fail mid-execution
+- Read the full goal before starting — do not skim
+- Temporary files go in `.tmp/` — never store important data there
