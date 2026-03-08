@@ -6,6 +6,7 @@ Index of all goal workflows in this project.
 |------|------|-------------|
 | Build App | build_app.md | BRACE 5-step build methodology |
 | Phase 1 | phase1-complete.md | Complete auth, schema, query — validate E2E |
+| Phase 1 E2E Validation | phase1-e2e-validation.md | Deferred E2E validation against real Dataverse sandbox |
 | Phase 2 | phase2-mutations.md | CRUD, FetchXML, batch, --dry-run |
 | Phase 3 | phase3-actions-mcp.md | Custom actions, MCP server, SKILL.md files |
 | Phase 4 | phase4-delegated-auth.md | Delegated PKCE, CallerObjectId, persistent cache |
