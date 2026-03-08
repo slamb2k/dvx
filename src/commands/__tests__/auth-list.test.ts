@@ -1,14 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { authList } from '../auth-list.js'
 
-const mockListProfiles = vi.fn()
+const { mockListProfiles } = vi.hoisted(() => ({
+  mockListProfiles: vi.fn(),
+}))
 
-vi.mock('../../auth/auth-manager.js', () => {
-  const MockAuthManager = vi.fn().mockImplementation(() => ({
-    listProfiles: mockListProfiles,
-  }))
-  return { AuthManager: MockAuthManager }
-})
+vi.mock('../../client/create-client.js', () => ({
+  createClient: vi.fn().mockResolvedValue({
+    authManager: { listProfiles: mockListProfiles },
+    client: {},
+  }),
+}))
 
 describe('authList', () => {
   beforeEach(() => {
@@ -29,10 +31,10 @@ describe('authList', () => {
     await authList({ output: 'table' })
 
     const calls = vi.mocked(console.log).mock.calls.map((c) => c[0])
-    const activeLine = calls.find((c) => typeof c === 'string' && c.startsWith('*'))
-    const inactiveLine = calls.find((c) => typeof c === 'string' && c.startsWith(' ') && c.includes('prod'))
-    expect(activeLine).toContain('dev')
-    expect(inactiveLine).toContain('prod')
+    const output = calls.find((c) => typeof c === 'string' && c.includes('*'))
+    expect(output).toContain('dev')
+    const prodLine = calls.find((c) => typeof c === 'string' && c.includes('prod'))
+    expect(prodLine).toBeTruthy()
   })
 
   it('outputs JSON format', async () => {

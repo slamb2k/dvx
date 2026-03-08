@@ -2,14 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { authSelect } from '../auth-select.js'
 import { AuthProfileNotFoundError } from '../../errors.js'
 
-const mockSelectProfile = vi.fn()
+const { mockSelectProfile } = vi.hoisted(() => ({
+  mockSelectProfile: vi.fn(),
+}))
 
-vi.mock('../../auth/auth-manager.js', () => {
-  const MockAuthManager = vi.fn().mockImplementation(() => ({
-    selectProfile: mockSelectProfile,
-  }))
-  return { AuthManager: MockAuthManager }
-})
+vi.mock('../../client/create-client.js', () => ({
+  createClient: vi.fn().mockResolvedValue({
+    authManager: { selectProfile: mockSelectProfile },
+    client: {},
+  }),
+}))
 
 describe('authSelect', () => {
   beforeEach(() => {

@@ -1,19 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { get } from '../get.js'
 
-const mockGetRecord = vi.fn()
+const { mockGetRecord } = vi.hoisted(() => ({
+  mockGetRecord: vi.fn(),
+}))
 
-vi.mock('../../auth/auth-manager.js', () => {
-  const MockAuthManager = vi.fn().mockImplementation(() => ({}))
-  return { AuthManager: MockAuthManager }
-})
-
-vi.mock('../../client/dataverse-client.js', () => {
-  const MockDataverseClient = vi.fn().mockImplementation(() => ({
-    getRecord: mockGetRecord,
-  }))
-  return { DataverseClient: MockDataverseClient }
-})
+vi.mock('../../client/create-client.js', () => ({
+  createClient: vi.fn().mockResolvedValue({
+    authManager: {},
+    client: { getRecord: mockGetRecord },
+  }),
+}))
 
 describe('get', () => {
   beforeEach(() => {

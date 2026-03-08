@@ -1,18 +1,27 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { authCreate } from '../auth-create.js'
 
-vi.mock('../../auth/auth-manager.js', () => {
-  const MockAuthManager = vi.fn().mockImplementation(() => ({
-    createProfile: vi.fn(),
-    getToken: vi.fn().mockResolvedValue('fake-token'),
-  }))
-  return { AuthManager: MockAuthManager }
-})
+const { mockCreateProfile, mockGetToken } = vi.hoisted(() => ({
+  mockCreateProfile: vi.fn(),
+  mockGetToken: vi.fn(),
+}))
+
+vi.mock('../../client/create-client.js', () => ({
+  createClient: vi.fn().mockResolvedValue({
+    authManager: {
+      createProfile: mockCreateProfile,
+      getToken: mockGetToken,
+    },
+    client: {},
+  }),
+}))
 
 describe('authCreate', () => {
   beforeEach(() => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockCreateProfile.mockReset()
+    mockGetToken.mockReset().mockResolvedValue('fake-token')
   })
 
   it('creates profile and validates token', async () => {
@@ -29,14 +38,7 @@ describe('authCreate', () => {
   })
 
   it('throws on token acquisition failure', async () => {
-    const { AuthManager } = await import('../../auth/auth-manager.js')
-    vi.mocked(AuthManager).mockImplementationOnce(() => ({
-      createProfile: vi.fn(),
-      getToken: vi.fn().mockRejectedValue(new Error('token failed')),
-      getActiveProfile: vi.fn(),
-      listProfiles: vi.fn(),
-      selectProfile: vi.fn(),
-    }) as unknown as InstanceType<typeof AuthManager>)
+    mockGetToken.mockRejectedValue(new Error('token failed'))
 
     await expect(authCreate({
       name: 'fail',
