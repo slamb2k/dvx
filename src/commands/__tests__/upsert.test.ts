@@ -31,6 +31,7 @@ describe('upsertRecord', () => {
     mockGetEntitySchema.mockResolvedValue({
       entitySetName: 'accounts',
       primaryIdAttribute: 'accountid',
+      attributes: [{ logicalName: 'name' }, { logicalName: 'accountid' }],
     })
   })
 
@@ -38,7 +39,7 @@ describe('upsertRecord', () => {
     mockQuery.mockResolvedValue([])
     mockCreateRecord.mockResolvedValue('00000000-0000-0000-0000-000000000001')
 
-    await upsertRecord('account', { matchField: 'name', json: '{"name":"Acme"}', dryRun: false })
+    await upsertRecord('account', { matchField: 'name', json: '{"name":"Acme"}', dryRun: false, output: 'json' })
 
     expect(mockCreateRecord).toHaveBeenCalledWith('account', { name: 'Acme' })
     const calls = vi.mocked(console.log).mock.calls.map((c) => c[0])
@@ -49,7 +50,7 @@ describe('upsertRecord', () => {
     mockQuery.mockResolvedValue([{ accountid: '00000000-0000-0000-0000-000000000002' }])
     mockUpdateRecord.mockResolvedValue(undefined)
 
-    await upsertRecord('account', { matchField: 'name', json: '{"name":"Acme"}', dryRun: false })
+    await upsertRecord('account', { matchField: 'name', json: '{"name":"Acme"}', dryRun: false, output: 'json' })
 
     expect(mockUpdateRecord).toHaveBeenCalledWith('account', '00000000-0000-0000-0000-000000000002', { name: 'Acme' })
     const calls = vi.mocked(console.log).mock.calls.map((c) => c[0])

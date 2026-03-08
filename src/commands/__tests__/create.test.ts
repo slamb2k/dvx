@@ -22,18 +22,18 @@ describe('createRecord', () => {
   it('creates a record and outputs the ID', async () => {
     mockCreateRecord.mockResolvedValue('00000000-0000-0000-0000-000000000001')
 
-    await createRecord('account', { json: '{"name":"Acme"}', dryRun: false })
+    await createRecord('account', { json: '{"name":"Acme"}', dryRun: false, output: 'json' })
 
     expect(mockCreateRecord).toHaveBeenCalledWith('account', { name: 'Acme' })
     const calls = vi.mocked(console.log).mock.calls.map((c) => c[0])
-    expect(JSON.parse(calls[0] as string)).toEqual({ id: '00000000-0000-0000-0000-000000000001' })
+    expect(JSON.parse(calls[0] as string)).toEqual({ ok: true, id: '00000000-0000-0000-0000-000000000001' })
   })
 
   it('passes dryRun to createClient', async () => {
     const { createClient } = await import('../../client/create-client.js')
     mockCreateRecord.mockResolvedValue('dry-run')
 
-    await createRecord('account', { json: '{"name":"Acme"}', dryRun: true })
+    await createRecord('account', { json: '{"name":"Acme"}', dryRun: true, output: 'table' })
 
     expect(createClient).toHaveBeenCalledWith({ dryRun: true, callerObjectId: undefined })
   })
@@ -42,7 +42,7 @@ describe('createRecord', () => {
     const { createClient } = await import('../../client/create-client.js')
     mockCreateRecord.mockResolvedValue('00000000-0000-0000-0000-000000000001')
 
-    await createRecord('account', { json: '{"name":"Acme"}', dryRun: false, callerObjectId: '00000000-0000-0000-0000-000000000099' })
+    await createRecord('account', { json: '{"name":"Acme"}', dryRun: false, callerObjectId: '00000000-0000-0000-0000-000000000099', output: 'table' })
 
     expect(createClient).toHaveBeenCalledWith({ dryRun: false, callerObjectId: '00000000-0000-0000-0000-000000000099' })
   })

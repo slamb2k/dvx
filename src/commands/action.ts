@@ -1,6 +1,7 @@
 import { createClient } from '../client/create-client.js'
 import { parseJsonPayload } from '../utils/parse-json.js'
 import { ValidationError } from '../errors.js'
+import { formatMutationResult, type OutputFormat } from '../utils/output.js'
 
 interface ActionOptions {
   json: string
@@ -8,6 +9,7 @@ interface ActionOptions {
   id?: string
   dryRun?: boolean
   callerObjectId?: string
+  output?: OutputFormat
 }
 
 export async function actionCommand(actionName: string, options: ActionOptions): Promise<void> {
@@ -23,5 +25,9 @@ export async function actionCommand(actionName: string, options: ActionOptions):
     id: options.id,
   })
 
-  console.log(JSON.stringify(result))
+  const resultRecord = (result && typeof result === 'object' && !Array.isArray(result))
+    ? result as Record<string, unknown>
+    : { result: JSON.stringify(result) }
+
+  formatMutationResult(resultRecord, { format: options.output ?? 'table' })
 }

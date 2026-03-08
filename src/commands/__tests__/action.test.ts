@@ -22,7 +22,7 @@ describe('actionCommand', () => {
   it('executes an unbound action and outputs result', async () => {
     mockExecuteAction.mockResolvedValue({ result: 'ok' })
 
-    await actionCommand('WinOpportunity', { json: '{"Status":3}' })
+    await actionCommand('WinOpportunity', { json: '{"Status":3}', output: 'json' })
 
     expect(mockExecuteAction).toHaveBeenCalledWith('WinOpportunity', { Status: 3 }, { entityName: undefined, id: undefined })
     const calls = vi.mocked(console.log).mock.calls.map((c) => c[0])

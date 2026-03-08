@@ -1,15 +1,19 @@
 import { createClient } from '../client/create-client.js'
 import { ValidationError } from '../errors.js'
 import { parseJsonPayload } from '../utils/parse-json.js'
+import { formatMutationResult, type OutputFormat } from '../utils/output.js'
 
 interface UpsertOptions {
   matchField: string
   json: string
   dryRun: boolean
   callerObjectId?: string
+  output?: OutputFormat
 }
 
 export async function upsertRecord(entityName: string, options: UpsertOptions): Promise<void> {
+  const { client } = await createClient({ dryRun: options.dryRun, callerObjectId: options.callerObjectId })
+
   const data = parseJsonPayload(options.json)
 
   const matchValue = data[options.matchField]
@@ -17,15 +21,13 @@ export async function upsertRecord(entityName: string, options: UpsertOptions): 
     throw new ValidationError(`Match field '${options.matchField}' not found in JSON payload`)
   }
 
-  if (options.dryRun) {
-    console.error(`[DRY RUN] Upsert ${entityName} matching on ${options.matchField}=${String(matchValue)}`)
-    console.error(`[DRY RUN] Body: ${JSON.stringify(data)}`)
-    return
+  const schema = await client.getEntitySchema(entityName)
+
+  const attr = schema.attributes.find((a) => a.logicalName === options.matchField)
+  if (!attr) {
+    throw new ValidationError(`Unknown field: ${options.matchField}`)
   }
 
-  const { client } = await createClient({ dryRun: options.dryRun, callerObjectId: options.callerObjectId })
-
-  const schema = await client.getEntitySchema(entityName)
   const escapedValue = typeof matchValue === 'string'
     ? `'${matchValue.replace(/'/g, "''")}'`
     : String(matchValue)
@@ -36,9 +38,9 @@ export async function upsertRecord(entityName: string, options: UpsertOptions): 
   if (records.length > 0) {
     const existingId = String(records[0]![schema.primaryIdAttribute])
     await client.updateRecord(entityName, existingId, data)
-    console.log(JSON.stringify({ action: 'updated', id: existingId }))
+    formatMutationResult({ action: 'updated', id: existingId }, { format: options.output ?? 'table', id: existingId })
   } else {
     const id = await client.createRecord(entityName, data)
-    console.log(JSON.stringify({ action: 'created', id }))
+    formatMutationResult({ action: 'created', id }, { format: options.output ?? 'table', id })
   }
 }

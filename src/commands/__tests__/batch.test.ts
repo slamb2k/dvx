@@ -12,11 +12,11 @@ vi.mock('../../client/create-client.js', () => ({
   }),
 }))
 
-vi.mock('node:fs', () => ({
-  readFileSync: vi.fn(),
+vi.mock('node:fs/promises', () => ({
+  readFile: vi.fn(),
 }))
 
-import { readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 
 describe('batch', () => {
   beforeEach(() => {
@@ -27,7 +27,7 @@ describe('batch', () => {
 
   it('executes a single batch', async () => {
     const ops = [{ method: 'POST', path: '/api/data/v9.2/accounts', body: { name: 'Acme' } }]
-    vi.mocked(readFileSync).mockReturnValue(JSON.stringify(ops))
+    vi.mocked(readFile).mockResolvedValue(JSON.stringify(ops))
     mockExecuteBatch.mockResolvedValue('response')
 
     await batch({ file: 'ops.json', atomic: false, dryRun: false })
@@ -41,7 +41,7 @@ describe('batch', () => {
       path: `/api/data/v9.2/accounts`,
       body: { name: `Account${i}` },
     }))
-    vi.mocked(readFileSync).mockReturnValue(JSON.stringify(ops))
+    vi.mocked(readFile).mockResolvedValue(JSON.stringify(ops))
     mockExecuteBatch.mockResolvedValue('response')
 
     await batch({ file: 'ops.json', atomic: false, dryRun: false })
@@ -51,7 +51,7 @@ describe('batch', () => {
 
   it('passes atomic flag to batch builder', async () => {
     const ops = [{ method: 'POST', path: '/api/data/v9.2/accounts', body: { name: 'Acme' } }]
-    vi.mocked(readFileSync).mockReturnValue(JSON.stringify(ops))
+    vi.mocked(readFile).mockResolvedValue(JSON.stringify(ops))
     mockExecuteBatch.mockResolvedValue('response')
 
     await batch({ file: 'ops.json', atomic: true, dryRun: false })

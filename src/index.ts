@@ -13,6 +13,8 @@ import { upsertRecord } from './commands/upsert.js'
 import { deleteRecord } from './commands/delete.js'
 import { batch } from './commands/batch.js'
 import { actionCommand } from './commands/action.js'
+import { init } from './commands/init.js'
+import { completion } from './commands/completion.js'
 
 const program = new Command()
 
@@ -137,8 +139,9 @@ program
   .requiredOption('--json <data>', 'JSON payload for the record')
   .option('--dry-run', 'Preview the operation without executing', false)
   .option('--as-user <id>', 'Run as this Entra user object ID (CallerObjectId)')
+  .addOption(new Option('--output <format>', 'Output format: json|table').choices(['json', 'table']).default('table'))
   .action(async (entityName, opts) => {
-    await createRecord(entityName, { json: opts.json, dryRun: opts.dryRun, callerObjectId: opts.asUser })
+    await createRecord(entityName, { json: opts.json, dryRun: opts.dryRun, callerObjectId: opts.asUser, output: opts.output })
   })
 
 // Update
@@ -150,8 +153,9 @@ program
   .requiredOption('--json <data>', 'JSON payload with fields to update')
   .option('--dry-run', 'Preview the operation without executing', false)
   .option('--as-user <id>', 'Run as this Entra user object ID (CallerObjectId)')
+  .addOption(new Option('--output <format>', 'Output format: json|table').choices(['json', 'table']).default('table'))
   .action(async (entityName, id, opts) => {
-    await updateRecord(entityName, id, { json: opts.json, dryRun: opts.dryRun, callerObjectId: opts.asUser })
+    await updateRecord(entityName, id, { json: opts.json, dryRun: opts.dryRun, callerObjectId: opts.asUser, output: opts.output })
   })
 
 // Upsert
@@ -163,8 +167,9 @@ program
   .requiredOption('--json <data>', 'JSON payload for the record')
   .option('--dry-run', 'Preview the operation without executing', false)
   .option('--as-user <id>', 'Run as this Entra user object ID (CallerObjectId)')
+  .addOption(new Option('--output <format>', 'Output format: json|table').choices(['json', 'table']).default('table'))
   .action(async (entityName, opts) => {
-    await upsertRecord(entityName, { matchField: opts.matchField, json: opts.json, dryRun: opts.dryRun, callerObjectId: opts.asUser })
+    await upsertRecord(entityName, { matchField: opts.matchField, json: opts.json, dryRun: opts.dryRun, callerObjectId: opts.asUser, output: opts.output })
   })
 
 // Delete
@@ -176,8 +181,9 @@ program
   .option('--confirm', 'Skip confirmation prompt', false)
   .option('--dry-run', 'Preview the operation without executing', false)
   .option('--as-user <id>', 'Run as this Entra user object ID (CallerObjectId)')
+  .addOption(new Option('--output <format>', 'Output format: json|table').choices(['json', 'table']).default('table'))
   .action(async (entityName, id, opts) => {
-    await deleteRecord(entityName, id, { confirm: opts.confirm, dryRun: opts.dryRun, callerObjectId: opts.asUser })
+    await deleteRecord(entityName, id, { confirm: opts.confirm, dryRun: opts.dryRun, callerObjectId: opts.asUser, output: opts.output })
   })
 
 // Batch
@@ -188,8 +194,9 @@ program
   .option('--atomic', 'Wrap operations in a changeset for atomicity', false)
   .option('--dry-run', 'Preview the operation without executing', false)
   .option('--as-user <id>', 'Run as this Entra user object ID (CallerObjectId)')
+  .addOption(new Option('--output <format>', 'Output format: json|table').choices(['json', 'table']).default('table'))
   .action(async (opts) => {
-    await batch({ file: opts.file, atomic: opts.atomic, dryRun: opts.dryRun, callerObjectId: opts.asUser })
+    await batch({ file: opts.file, atomic: opts.atomic, dryRun: opts.dryRun, callerObjectId: opts.asUser, output: opts.output })
   })
 
 // Action
@@ -202,21 +209,42 @@ program
   .option('--id <id>', 'Record GUID for bound actions')
   .option('--dry-run', 'Preview the operation without executing', false)
   .option('--as-user <id>', 'Run as this Entra user object ID (CallerObjectId)')
+  .addOption(new Option('--output <format>', 'Output format: json|table').choices(['json', 'table']).default('table'))
   .action(async (actionName, opts) => {
-    await actionCommand(actionName, { json: opts.json, entity: opts.entity, id: opts.id, dryRun: opts.dryRun, callerObjectId: opts.asUser })
+    await actionCommand(actionName, { json: opts.json, entity: opts.entity, id: opts.id, dryRun: opts.dryRun, callerObjectId: opts.asUser, output: opts.output })
   })
 
 // MCP server
 program
   .command('mcp')
-  .description('Start MCP stdio server for agent consumption')
+  .description('Start MCP server for agent consumption')
   .option('--entities <entities>', 'Comma-separated entity logical names to scope tools')
-  .option('--port <port>', 'Port for HTTP/SSE transport (Phase 5, not yet implemented)', parseInt)
+  .option('--port <port>', 'Port for HTTP transport', parseInt)
+  .addOption(new Option('--transport <transport>', 'Transport type: stdio|http').choices(['stdio', 'http']).default('stdio'))
   .action(async (options) => {
     const { startMcpServer } = await import('./mcp/server.js')
     await startMcpServer({
       entities: options.entities?.split(',').map((e: string) => e.trim()),
+      transport: options.transport,
+      port: options.port,
     })
+  })
+
+// Init wizard
+program
+  .command('init')
+  .description('Interactive setup wizard for dvx')
+  .action(async () => {
+    await init()
+  })
+
+// Shell completion
+program
+  .command('completion')
+  .description('Generate shell completion script')
+  .argument('<shell>', 'Shell type: bash, zsh, or powershell')
+  .action((shell) => {
+    completion(shell as 'bash' | 'zsh' | 'powershell')
   })
 
 async function main(): Promise<void> {

@@ -1,0 +1,51 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x64
+            pkg_target: node18-linux-x64
+          - os: macos-latest
+            target: darwin-arm64
+            pkg_target: node18-macos-arm64
+          - os: macos-13
+            target: darwin-x64
+            pkg_target: node18-macos-x64
+          - os: windows-latest
+            target: win-x64
+            pkg_target: node18-win-x64
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with: { node-version: '18', cache: 'pnpm' }
+      - run: pnpm install
+      - run: pnpm build
+      - name: Build binary
+        run: |
+          npx @yao-pkg/pkg dist/index.js \
+            --target ${{ matrix.pkg_target }} \
+            --output dvx \
+            --no-bytecode \
+            --public-packages '*'
+      - name: Package with native addon
+        shell: bash
+        run: |
+          ADDON=$(find node_modules/better-sqlite3 -name "*.node" | head -1)
+          cp "$ADDON" better_sqlite3.node
+          zip dvx-${{ matrix.target }}.zip dvx better_sqlite3.node || \
+          zip dvx-${{ matrix.target }}.zip dvx.exe better_sqlite3.node
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: dvx-${{ matrix.target }}.zip

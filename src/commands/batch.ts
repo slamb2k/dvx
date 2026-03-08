@@ -1,8 +1,9 @@
-import { readFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { z } from 'zod'
 import { createClient } from '../client/create-client.js'
 import { buildBatchBody, chunkArray, type BatchOperation } from '../utils/batch-builder.js'
-import { parseJsonPayload } from '../utils/parse-json.js'
+import { ValidationError } from '../errors.js'
+import { formatMutationResult, type OutputFormat } from '../utils/output.js'
 
 const BatchOperationSchema = z.object({
   method: z.enum(['GET', 'POST', 'PATCH', 'DELETE']),
@@ -19,13 +20,19 @@ interface BatchOptions {
   atomic: boolean
   dryRun: boolean
   callerObjectId?: string
+  output?: OutputFormat
 }
 
 export async function batch(options: BatchOptions): Promise<void> {
   const { client } = await createClient({ dryRun: options.dryRun, callerObjectId: options.callerObjectId })
 
-  const content = readFileSync(options.file, 'utf-8')
-  const parsed: unknown = parseJsonPayload(content)
+  const content = await readFile(options.file, 'utf-8')
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(content)
+  } catch {
+    throw new ValidationError('Invalid JSON in batch file')
+  }
 
   const operations = BatchFileSchema.parse(parsed) as BatchOperation[]
   const chunks = chunkArray(operations, 1000)
@@ -39,6 +46,9 @@ export async function batch(options: BatchOptions): Promise<void> {
     const body = buildBatchBody(chunk, boundary, { atomic: options.atomic })
     const result = await client.executeBatch(body, boundary)
 
-    console.log(JSON.stringify({ chunk: i + 1, totalChunks: chunks.length, operations: chunk.length, responseLength: result.length }))
+    formatMutationResult(
+      { chunk: i + 1, totalChunks: chunks.length, operations: chunk.length, responseLength: result.length },
+      { format: options.output ?? 'table' }
+    )
   }
 }
