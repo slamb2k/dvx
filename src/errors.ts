@@ -74,3 +74,20 @@ export class SchemaError extends DvxError {
     this.name = 'SchemaError'
   }
 }
+
+export class FetchXmlValidationError extends DvxError {
+  constructor(message: string) {
+    super(message)
+    this.name = 'FetchXmlValidationError'
+  }
+}
+
+export class BatchError extends DvxError {
+  public readonly operationErrors: Array<{ index: number; message: string }>
+
+  constructor(message: string, operationErrors: Array<{ index: number; message: string }> = []) {
+    super(message)
+    this.name = 'BatchError'
+    this.operationErrors = operationErrors
+  }
+}

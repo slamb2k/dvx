@@ -4,6 +4,7 @@ import { AuthManager } from '../auth/auth-manager.js'
 import { SchemaCache, EntitySchemaCacheEntry, AttributeDefinition } from '../schema/schema-cache.js'
 import { withRetry } from '../utils/retry.js'
 import { validateEntityName, validateGuid } from '../utils/validation.js'
+import { injectPagingCookie } from '../utils/fetchxml.js'
 
 const ODataResponseSchema = z.object({
   value: z.array(z.record(z.string(), z.unknown())),
@@ -51,11 +52,13 @@ export class DataverseClient {
   private schemaCache: SchemaCache
   private baseUrl: string | undefined
   private debug: boolean
+  private dryRun: boolean
 
-  constructor(authManager: AuthManager, schemaCache?: SchemaCache) {
+  constructor(authManager: AuthManager, schemaCache?: SchemaCache, opts?: { dryRun?: boolean }) {
     this.authManager = authManager
     this.schemaCache = schemaCache ?? new SchemaCache()
     this.debug = process.env['DVX_DEBUG'] === 'true'
+    this.dryRun = opts?.dryRun ?? false
   }
 
   private async getBaseUrl(): Promise<string> {
@@ -225,13 +228,142 @@ export class DataverseClient {
       url += `?$select=${fields.join(',')}`
     }
 
-    const response = await withRetry(() => this.request(url))
-
-    if (response.status === 404) {
-      throw new RecordNotFoundError(name, guid)
+    let response: Response
+    try {
+      response = await withRetry(() => this.request(url))
+    } catch (e) {
+      if (e instanceof DataverseError && e.statusCode === 404) {
+        throw new RecordNotFoundError(name, guid)
+      }
+      throw e
     }
 
     const json = await response.json() as Record<string, unknown>
     return json
+  }
+
+  async createRecord(entityName: string, data: Record<string, unknown>): Promise<string> {
+    const name = validateEntityName(entityName)
+    const schema = await this.getEntitySchema(name)
+    const baseUrl = await this.getBaseUrl()
+    const url = `${baseUrl}/${schema.entitySetName}`
+
+    if (this.dryRun) {
+      console.error(`[DRY RUN] POST ${url}`)
+      console.error(`[DRY RUN] Body: ${JSON.stringify(data)}`)
+      return 'dry-run'
+    }
+
+    const response = await withRetry(() => this.request(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }))
+
+    const entityIdHeader = response.headers.get('OData-EntityId') ?? ''
+    const match = /\(([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\)/i.exec(entityIdHeader)
+    if (!match?.[1]) {
+      throw new DataverseError('Create succeeded but OData-EntityId header missing', 201)
+    }
+    return match[1]
+  }
+
+  async updateRecord(entityName: string, id: string, data: Record<string, unknown>): Promise<void> {
+    const name = validateEntityName(entityName)
+    const guid = validateGuid(id)
+    const schema = await this.getEntitySchema(name)
+    const baseUrl = await this.getBaseUrl()
+    const url = `${baseUrl}/${schema.entitySetName}(${guid})`
+
+    if (this.dryRun) {
+      console.error(`[DRY RUN] PATCH ${url}`)
+      console.error(`[DRY RUN] Body: ${JSON.stringify(data)}`)
+      return
+    }
+
+    await withRetry(() => this.request(url, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    }))
+  }
+
+  async deleteRecord(entityName: string, id: string): Promise<void> {
+    const name = validateEntityName(entityName)
+    const guid = validateGuid(id)
+    const schema = await this.getEntitySchema(name)
+    const baseUrl = await this.getBaseUrl()
+    const url = `${baseUrl}/${schema.entitySetName}(${guid})`
+
+    if (this.dryRun) {
+      console.error(`[DRY RUN] DELETE ${url}`)
+      return
+    }
+
+    await withRetry(() => this.request(url, { method: 'DELETE' }))
+  }
+
+  async queryFetchXml(
+    entityName: string,
+    fetchXml: string,
+    onRecord?: (record: unknown) => void,
+  ): Promise<unknown[]> {
+    const name = validateEntityName(entityName)
+    const schema = await this.getEntitySchema(name)
+    const baseUrl = await this.getBaseUrl()
+    const maxRows = Number(process.env['DVX_MAX_ROWS']) || 5000
+    let totalRecords = 0
+    const records: unknown[] = []
+    let page = 1
+    let currentXml = fetchXml
+
+    do {
+      const encoded = encodeURIComponent(currentXml)
+      const url = `${baseUrl}/${schema.entitySetName}?fetchXml=${encoded}`
+
+      const response = await withRetry(() => this.request(url))
+      const json = await response.json() as Record<string, unknown>
+      const parsed = ODataResponseSchema.parse(json)
+
+      for (const record of parsed.value) {
+        if (totalRecords >= maxRows) break
+        totalRecords++
+
+        if (onRecord) {
+          onRecord(record)
+        } else {
+          records.push(record)
+        }
+      }
+
+      if (totalRecords >= maxRows) break
+
+      const cookie = json['@Microsoft.Dynamics.CRM.fetchxmlpagingcookie'] as string | undefined
+      if (!cookie) break
+
+      page++
+      currentXml = injectPagingCookie(currentXml, cookie, page)
+    } while (true)
+
+    return records
+  }
+
+  async executeBatch(body: string, boundary: string): Promise<string> {
+    const baseUrl = await this.getBaseUrl()
+    const url = `${baseUrl}/$batch`
+
+    if (this.dryRun) {
+      console.error(`[DRY RUN] POST ${url}`)
+      console.error(`[DRY RUN] Batch body length: ${body.length}`)
+      return ''
+    }
+
+    const response = await withRetry(() => this.request(url, {
+      method: 'POST',
+      headers: { 'Content-Type': `multipart/mixed;boundary=${boundary}` },
+      body,
+    }))
+
+    return await response.text()
   }
 }

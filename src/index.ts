@@ -6,6 +6,11 @@ import { entities } from './commands/entities.js'
 import { schema } from './commands/schema.js'
 import { query } from './commands/query.js'
 import { get } from './commands/get.js'
+import { createRecord } from './commands/create.js'
+import { updateRecord } from './commands/update.js'
+import { upsertRecord } from './commands/upsert.js'
+import { deleteRecord } from './commands/delete.js'
+import { batch } from './commands/batch.js'
 
 const program = new Command()
 
@@ -75,19 +80,25 @@ program
 // Query
 program
   .command('query')
-  .description('Query records using OData')
-  .requiredOption('--odata <expression>', 'OData query expression (entitySetName?$filter=...)')
+  .description('Query records using OData or FetchXML')
+  .option('--odata <expression>', 'OData query expression (entitySetName?$filter=...)')
+  .option('--fetchxml <xml>', 'FetchXML query string')
+  .option('--file <path>', 'Read query from file (auto-detects OData or FetchXML)')
   .option('--fields <fields>', 'Comma-separated field names to select')
   .option('--page-all', 'Stream all pages as NDJSON', false)
   .option('--max-rows <n>', 'Maximum rows to return', parseInt)
+  .option('--dry-run', 'Preview the operation without executing', false)
   .addOption(new Option('--output <format>', 'Output format').choices(['json', 'ndjson', 'table']).default('json'))
   .action(async (opts) => {
     await query({
       odata: opts.odata,
+      fetchxml: opts.fetchxml,
+      file: opts.file,
       fields: opts.fields,
       pageAll: opts.pageAll,
       maxRows: opts.maxRows,
       output: opts.output,
+      dryRun: opts.dryRun,
     })
   })
 
@@ -101,6 +112,64 @@ program
   .addOption(new Option('--output <format>', 'Output format').choices(['json', 'table']).default('json'))
   .action(async (entityName, id, opts) => {
     await get(entityName, id, { fields: opts.fields, output: opts.output })
+  })
+
+// Create
+program
+  .command('create')
+  .description('Create a new record')
+  .argument('<entity>', 'Entity logical name')
+  .requiredOption('--json <data>', 'JSON payload for the record')
+  .option('--dry-run', 'Preview the operation without executing', false)
+  .action(async (entityName, opts) => {
+    await createRecord(entityName, { json: opts.json, dryRun: opts.dryRun })
+  })
+
+// Update
+program
+  .command('update')
+  .description('Update an existing record')
+  .argument('<entity>', 'Entity logical name')
+  .argument('<id>', 'Record GUID')
+  .requiredOption('--json <data>', 'JSON payload with fields to update')
+  .option('--dry-run', 'Preview the operation without executing', false)
+  .action(async (entityName, id, opts) => {
+    await updateRecord(entityName, id, { json: opts.json, dryRun: opts.dryRun })
+  })
+
+// Upsert
+program
+  .command('upsert')
+  .description('Create or update a record based on a match field')
+  .argument('<entity>', 'Entity logical name')
+  .requiredOption('--match-field <field>', 'Field to match on for upsert')
+  .requiredOption('--json <data>', 'JSON payload for the record')
+  .option('--dry-run', 'Preview the operation without executing', false)
+  .action(async (entityName, opts) => {
+    await upsertRecord(entityName, { matchField: opts.matchField, json: opts.json, dryRun: opts.dryRun })
+  })
+
+// Delete
+program
+  .command('delete')
+  .description('Delete a record by ID')
+  .argument('<entity>', 'Entity logical name')
+  .argument('<id>', 'Record GUID')
+  .option('--confirm', 'Skip confirmation prompt', false)
+  .option('--dry-run', 'Preview the operation without executing', false)
+  .action(async (entityName, id, opts) => {
+    await deleteRecord(entityName, id, { confirm: opts.confirm, dryRun: opts.dryRun })
+  })
+
+// Batch
+program
+  .command('batch')
+  .description('Execute batch operations from a file')
+  .requiredOption('--file <path>', 'JSON file with batch operations')
+  .option('--atomic', 'Wrap operations in a changeset for atomicity', false)
+  .option('--dry-run', 'Preview the operation without executing', false)
+  .action(async (opts) => {
+    await batch({ file: opts.file, atomic: opts.atomic, dryRun: opts.dryRun })
   })
 
 // Error handling
