@@ -1,0 +1,25 @@
+# Lefthook configuration
+# https://github.com/evilmartians/lefthook
+
+# Pre-commit hooks (fast checks)
+pre-commit:
+  parallel: true
+  commands:
+    lint:
+      glob: "*.{js,jsx,ts,tsx}"
+      run: pnpm run lint
+      stage_fixed: true
+
+    type-check:
+      glob: "*.{ts,tsx}"
+      run: pnpm run typecheck
+
+# Pre-push hooks (slower, more thorough)
+pre-push:
+  parallel: false
+  commands:
+    test:
+      run: pnpm test
+
+    build:
+      run: pnpm run build
