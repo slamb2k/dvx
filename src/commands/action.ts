@@ -7,6 +7,7 @@ interface ActionOptions {
   entity?: string
   id?: string
   dryRun?: boolean
+  callerObjectId?: string
 }
 
 export async function actionCommand(actionName: string, options: ActionOptions): Promise<void> {
@@ -15,7 +16,7 @@ export async function actionCommand(actionName: string, options: ActionOptions):
   }
 
   const payload = parseJsonPayload(options.json)
-  const { client } = await createClient({ dryRun: options.dryRun })
+  const { client } = await createClient({ dryRun: options.dryRun, callerObjectId: options.callerObjectId })
 
   const result = await client.executeAction(actionName, payload, {
     entityName: options.entity,

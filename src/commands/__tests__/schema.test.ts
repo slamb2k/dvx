@@ -1,14 +1,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { schema } from '../schema.js'
 
-const { mockGetEntitySchema } = vi.hoisted(() => ({
+const { mockGetEntitySchema, mockInvalidateSchema, mockClearSchemaCache } = vi.hoisted(() => ({
   mockGetEntitySchema: vi.fn(),
+  mockInvalidateSchema: vi.fn(),
+  mockClearSchemaCache: vi.fn(),
 }))
 
 vi.mock('../../client/create-client.js', () => ({
   createClient: vi.fn().mockResolvedValue({
     authManager: {},
-    client: { getEntitySchema: mockGetEntitySchema },
+    client: {
+      getEntitySchema: mockGetEntitySchema,
+      invalidateSchema: mockInvalidateSchema,
+      clearSchemaCache: mockClearSchemaCache,
+    },
   }),
 }))
 
@@ -16,6 +22,8 @@ describe('schema', () => {
   beforeEach(() => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     mockGetEntitySchema.mockReset()
+    mockInvalidateSchema.mockReset()
+    mockClearSchemaCache.mockReset()
   })
 
   it('outputs entity schema as JSON', async () => {
@@ -43,5 +51,23 @@ describe('schema', () => {
     await expect(schema('badentity', { output: 'json', noCache: false })).rejects.toThrow(
       'Schema fetch failed',
     )
+  })
+
+  it('calls invalidateSchema when refresh is true', async () => {
+    mockGetEntitySchema.mockResolvedValue({ logicalName: 'account', attributes: [] })
+
+    await schema('account', { output: 'json', noCache: false, refresh: true })
+
+    expect(mockInvalidateSchema).toHaveBeenCalledWith('account')
+    expect(mockClearSchemaCache).not.toHaveBeenCalled()
+  })
+
+  it('calls clearSchemaCache when refreshAll is true', async () => {
+    mockGetEntitySchema.mockResolvedValue({ logicalName: 'account', attributes: [] })
+
+    await schema('account', { output: 'json', noCache: false, refreshAll: true })
+
+    expect(mockClearSchemaCache).toHaveBeenCalled()
+    expect(mockInvalidateSchema).not.toHaveBeenCalled()
   })
 })

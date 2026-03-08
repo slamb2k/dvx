@@ -1,23 +1,27 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { ConfidentialClientApplication } from '@azure/msal-node'
+import { execFile } from 'node:child_process'
+import { ConfidentialClientApplication, PublicClientApplication } from '@azure/msal-node'
 import {
   AuthProfileNotFoundError,
   AuthProfileExistsError,
   TokenAcquisitionError,
+  PkceFlowError,
 } from '../errors.js'
 import { AuthConfig, AuthConfigSchema, AuthProfile } from './auth-profile.js'
+import { MsalCachePlugin } from './msal-cache-plugin.js'
 
 const CONFIG_DIR = '.dvx'
 const CONFIG_FILE = 'config.json'
 
 export class AuthManager {
   private configPath: string
+  private basePath: string
   private config: AuthConfig
 
   constructor(basePath?: string) {
-    const base = basePath ?? process.cwd()
-    this.configPath = path.join(base, CONFIG_DIR, CONFIG_FILE)
+    this.basePath = basePath ?? process.cwd()
+    this.configPath = path.join(this.basePath, CONFIG_DIR, CONFIG_FILE)
     this.config = this.loadConfig()
   }
 
@@ -82,11 +86,72 @@ export class AuthManager {
     this.saveConfig()
   }
 
-  async getToken(profile?: AuthProfile): Promise<string> {
-    const p = profile ?? this.getActiveProfile()
+  private saveProfile(profile: AuthProfile): void {
+    this.config.profiles[profile.name] = profile
+    this.saveConfig()
+  }
 
-    if (p.type !== 'service-principal') {
-      throw new TokenAcquisitionError('Only service-principal auth is supported in Phase 1')
+  private async getTokenDelegated(profile: AuthProfile): Promise<string> {
+    const cacheFilePath = path.join(this.basePath, '.dvx', 'msal-cache.json')
+    const pca = new PublicClientApplication({
+      auth: {
+        clientId: profile.clientId,
+        authority: `https://login.microsoftonline.com/${profile.tenantId}`,
+      },
+      cache: {
+        cachePlugin: new MsalCachePlugin(cacheFilePath),
+      },
+    })
+
+    const scopes = [`${profile.environmentUrl}/user_impersonation`]
+    const accounts = await pca.getAllAccounts()
+
+    if (accounts.length > 0 && accounts[0]) {
+      try {
+        const result = await pca.acquireTokenSilent({
+          account: accounts[0],
+          scopes,
+        })
+        if (result?.accessToken) return result.accessToken
+      } catch {
+        // Fall through to interactive
+      }
+    }
+
+    const result = await pca.acquireTokenInteractive({
+      scopes,
+      openBrowser: async (url) => {
+        const platform = process.platform
+        const cmd = platform === 'darwin' ? 'open' : platform === 'win32' ? 'start' : 'xdg-open'
+        await new Promise<void>((resolve) => { execFile(cmd, [url], () => { resolve() }) })
+      },
+      successTemplate: '<h1>Authentication complete. You may close this tab.</h1>',
+      errorTemplate: '<h1>Authentication failed: {error}</h1>',
+    })
+
+    if (!result?.accessToken) throw new PkceFlowError('No access token returned from interactive login')
+
+    if (result.account?.homeAccountId) {
+      profile.homeAccountId = result.account.homeAccountId
+      this.saveProfile(profile)
+    }
+
+    return result.accessToken
+  }
+
+  async getToken(profileOrName?: AuthProfile | string): Promise<string> {
+    let p: AuthProfile
+    if (typeof profileOrName === 'string') {
+      if (!this.config.profiles[profileOrName]) {
+        throw new AuthProfileNotFoundError(profileOrName)
+      }
+      p = this.config.profiles[profileOrName]
+    } else {
+      p = profileOrName ?? this.getActiveProfile()
+    }
+
+    if (p.type === 'delegated') {
+      return this.getTokenDelegated(p)
     }
 
     const clientSecret = p.clientSecret ?? process.env['DATAVERSE_CLIENT_SECRET']

@@ -7,6 +7,7 @@ export const AuthProfileSchema = z.object({
   tenantId: z.string().uuid(),
   clientId: z.string().uuid(),
   clientSecret: z.string().optional(),
+  homeAccountId: z.string().optional(),
 })
 
 export type AuthProfile = z.infer<typeof AuthProfileSchema>

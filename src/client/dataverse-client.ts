@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { ActionError, DataverseError, EntityNotFoundError, RecordNotFoundError } from '../errors.js'
+import { ActionError, DataverseError, EntityNotFoundError, ImpersonationPrivilegeError, RecordNotFoundError } from '../errors.js'
 import { AuthManager } from '../auth/auth-manager.js'
-import { SchemaCache, EntitySchemaCacheEntry, AttributeDefinition } from '../schema/schema-cache.js'
+import { ISchemaCache, SchemaCache, EntitySchemaCacheEntry, AttributeDefinition } from '../schema/schema-cache.js'
 import { withRetry } from '../utils/retry.js'
 import { validateEntityName, validateGuid, validateActionName } from '../utils/validation.js'
 import { injectPagingCookie } from '../utils/fetchxml.js'
@@ -49,16 +49,18 @@ interface QueryOptions {
 
 export class DataverseClient {
   private authManager: AuthManager
-  private schemaCache: SchemaCache
+  private schemaCache: ISchemaCache
   private baseUrl: string | undefined
   private debug: boolean
   private dryRun: boolean
+  private callerObjectId: string | undefined
 
-  constructor(authManager: AuthManager, schemaCache?: SchemaCache, opts?: { dryRun?: boolean }) {
+  constructor(authManager: AuthManager, schemaCache?: ISchemaCache, opts?: { dryRun?: boolean; callerObjectId?: string }) {
     this.authManager = authManager
     this.schemaCache = schemaCache ?? new SchemaCache()
     this.debug = process.env['DVX_DEBUG'] === 'true'
     this.dryRun = opts?.dryRun ?? false
+    this.callerObjectId = opts?.callerObjectId
   }
 
   private async getBaseUrl(): Promise<string> {
@@ -70,6 +72,7 @@ export class DataverseClient {
 
   private async request(url: string, options: RequestInit = {}): Promise<Response> {
     const token = await this.authManager.getToken()
+    const method = options.method ?? 'GET'
     const headers: Record<string, string> = {
       'Authorization': `Bearer ${token}`,
       'Accept': 'application/json',
@@ -78,8 +81,12 @@ export class DataverseClient {
       ...(options.headers as Record<string, string> ?? {}),
     }
 
+    if (this.callerObjectId) {
+      headers['CallerObjectId'] = this.callerObjectId
+    }
+
     if (this.debug) {
-      console.error(`[DVX] ${options.method ?? 'GET'} ${url}`)
+      console.error(`[DVX] ${method} ${url}`)
     }
 
     const response = await fetch(url, { ...options, headers })
@@ -104,6 +111,10 @@ export class DataverseClient {
         if (!Number.isNaN(parsed) && parsed > 0) {
           retryAfterSeconds = parsed
         }
+      }
+
+      if (response.status === 403 && this.callerObjectId && errorMessage.includes('prvActOnBehalfOfAnotherUser')) {
+        throw new ImpersonationPrivilegeError(errorMessage)
       }
 
       throw new DataverseError(errorMessage, response.status, errorCode, retryAfterSeconds)
@@ -388,6 +399,14 @@ export class DataverseClient {
       }
       throw err
     }
+  }
+
+  invalidateSchema(entityName: string): void {
+    this.schemaCache.invalidate(entityName)
+  }
+
+  clearSchemaCache(): void {
+    this.schemaCache.clear()
   }
 
   async executeBatch(body: string, boundary: string): Promise<string> {

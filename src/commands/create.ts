@@ -4,10 +4,11 @@ import { parseJsonPayload } from '../utils/parse-json.js'
 interface CreateOptions {
   json: string
   dryRun: boolean
+  callerObjectId?: string
 }
 
 export async function createRecord(entityName: string, options: CreateOptions): Promise<void> {
-  const { client } = await createClient({ dryRun: options.dryRun })
+  const { client } = await createClient({ dryRun: options.dryRun, callerObjectId: options.callerObjectId })
 
   const data = parseJsonPayload(options.json)
 

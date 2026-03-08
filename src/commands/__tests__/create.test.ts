@@ -35,7 +35,16 @@ describe('createRecord', () => {
 
     await createRecord('account', { json: '{"name":"Acme"}', dryRun: true })
 
-    expect(createClient).toHaveBeenCalledWith({ dryRun: true })
+    expect(createClient).toHaveBeenCalledWith({ dryRun: true, callerObjectId: undefined })
+  })
+
+  it('passes callerObjectId to createClient when asUser is set', async () => {
+    const { createClient } = await import('../../client/create-client.js')
+    mockCreateRecord.mockResolvedValue('00000000-0000-0000-0000-000000000001')
+
+    await createRecord('account', { json: '{"name":"Acme"}', dryRun: false, callerObjectId: '00000000-0000-0000-0000-000000000099' })
+
+    expect(createClient).toHaveBeenCalledWith({ dryRun: false, callerObjectId: '00000000-0000-0000-0000-000000000099' })
   })
 
   it('throws on invalid JSON', async () => {

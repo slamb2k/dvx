@@ -6,6 +6,7 @@ interface UpsertOptions {
   matchField: string
   json: string
   dryRun: boolean
+  callerObjectId?: string
 }
 
 export async function upsertRecord(entityName: string, options: UpsertOptions): Promise<void> {
@@ -22,7 +23,7 @@ export async function upsertRecord(entityName: string, options: UpsertOptions): 
     return
   }
 
-  const { client } = await createClient({ dryRun: options.dryRun })
+  const { client } = await createClient({ dryRun: options.dryRun, callerObjectId: options.callerObjectId })
 
   const schema = await client.getEntitySchema(entityName)
   const escapedValue = typeof matchValue === 'string'

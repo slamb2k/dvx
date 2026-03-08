@@ -3,10 +3,18 @@ import { createClient } from '../client/create-client.js'
 interface SchemaOptions {
   output: 'json'
   noCache: boolean
+  refresh?: boolean
+  refreshAll?: boolean
 }
 
 export async function schema(entityName: string, options: SchemaOptions): Promise<void> {
   const { client } = await createClient()
+
+  if (options.refreshAll) {
+    client.clearSchemaCache()
+  } else if (options.refresh) {
+    client.invalidateSchema(entityName)
+  }
 
   const entry = await client.getEntitySchema(entityName, options.noCache)
 

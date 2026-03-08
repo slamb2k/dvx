@@ -18,10 +18,11 @@ interface BatchOptions {
   file: string
   atomic: boolean
   dryRun: boolean
+  callerObjectId?: string
 }
 
 export async function batch(options: BatchOptions): Promise<void> {
-  const { client } = await createClient({ dryRun: options.dryRun })
+  const { client } = await createClient({ dryRun: options.dryRun, callerObjectId: options.callerObjectId })
 
   const content = readFileSync(options.file, 'utf-8')
   const parsed: unknown = parseJsonPayload(content)
