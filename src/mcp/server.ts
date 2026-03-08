@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { text } from 'node:stream/consumers'
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
@@ -65,6 +66,8 @@ export async function startMcpServer(opts: { entities?: string[]; transport?: 's
     const { createServer } = await import('node:http')
     const port = opts.port ?? 3000
 
+    const sessions = new Map<string, { transport: StreamableHTTPServerTransport; server: Server }>()
+
     const httpServer = createServer(async (req, res) => {
       if (req.method === 'GET' && req.url === '/health') {
         res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -72,22 +75,45 @@ export async function startMcpServer(opts: { entities?: string[]; transport?: 's
         return
       }
 
-      // stateless: fresh Server instance per request to avoid connect() state corruption
-      const server = createMcpServer(client, entitySchemas)
+      const sessionId = req.headers['mcp-session-id'] as string | undefined
+
+      if (req.method === 'DELETE' && req.url === '/mcp') {
+        if (sessionId && sessions.has(sessionId)) {
+          const session = sessions.get(sessionId)!
+          await session.transport.close()
+          sessions.delete(sessionId)
+        }
+        res.writeHead(204)
+        res.end()
+        return
+      }
+
+      if (sessionId && sessions.has(sessionId)) {
+        const session = sessions.get(sessionId)!
+        await session.transport.handleRequest(req, res, await parseBody(req))
+        return
+      }
+
+      // Initialization path: create a new Server and transport for this session
+      const mcpServer = createMcpServer(client, entitySchemas)
 
       const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: undefined, // stateless
+        sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (sid) => {
+          sessions.set(sid, { transport, server: mcpServer })
+        },
+        onsessionclosed: (sid) => {
+          sessions.delete(sid)
+        },
       })
 
-      res.on('close', () => void transport.close())
-
-      await server.connect(transport)
+      await mcpServer.connect(transport)
       await transport.handleRequest(req, res, await parseBody(req))
     })
 
     httpServer.listen(port, () => {
       console.error(`dvx MCP HTTP server listening on port ${port}`)
-      console.error('Stateless mode. For stateful session support (better performance with batch tools), see: https://github.com/slamb2k/dvx#mcp-stateful')
+      console.error('Stateful session mode — SSE subscriptions and batch progress streaming are supported.')
     })
     return
   }
