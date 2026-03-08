@@ -21,6 +21,15 @@ export function validateEntityName(name: string): string {
   return name.toLowerCase()
 }
 
+export function validateActionName(name: string): string {
+  if (!/^[A-Z][A-Za-z0-9_]*$/.test(name)) {
+    throw new ValidationError(
+      `Invalid action name "${name}": must start with uppercase letter and contain only letters, digits, or underscores`
+    )
+  }
+  return name
+}
+
 export function validateUrl(url: string): string {
   try {
     const parsed = new URL(url)

@@ -3,7 +3,7 @@ import { DataverseError, EntityNotFoundError, RecordNotFoundError } from '../err
 import { AuthManager } from '../auth/auth-manager.js'
 import { SchemaCache, EntitySchemaCacheEntry, AttributeDefinition } from '../schema/schema-cache.js'
 import { withRetry } from '../utils/retry.js'
-import { validateEntityName, validateGuid } from '../utils/validation.js'
+import { validateEntityName, validateGuid, validateActionName } from '../utils/validation.js'
 import { injectPagingCookie } from '../utils/fetchxml.js'
 
 const ODataResponseSchema = z.object({
@@ -346,6 +346,41 @@ export class DataverseClient {
     } while (true)
 
     return records
+  }
+
+  async executeAction(
+    actionName: string,
+    payload: Record<string, unknown>,
+    opts?: { entityName?: string; id?: string },
+  ): Promise<Record<string, unknown> | null> {
+    validateActionName(actionName)
+
+    const baseUrl = await this.getBaseUrl()
+    let url: string
+    if (opts?.entityName && opts?.id) {
+      const guid = validateGuid(opts.id)
+      const schema = await this.getEntitySchema(opts.entityName)
+      url = `${baseUrl}/${schema.entitySetName}(${guid})/Microsoft.Dynamics.CRM.${actionName}`
+    } else {
+      url = `${baseUrl}/${actionName}`
+    }
+
+    if (this.dryRun) {
+      console.error('[DRY RUN] POST', url)
+      console.error('[DRY RUN] Body:', JSON.stringify(payload, null, 2))
+      return null
+    }
+
+    return withRetry(async () => {
+      const response = await this.request(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (response.status === 204) return null
+      const data = await response.json() as unknown
+      return z.record(z.string(), z.unknown()).parse(data)
+    })
   }
 
   async executeBatch(body: string, boundary: string): Promise<string> {
