@@ -6,13 +6,16 @@
   "bin": {
     "dvx": "./dist/index.js"
   },
+  "files": ["dist"],
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "prepublishOnly": "pnpm build && pnpm test",
+    "postinstall": "node -e \"console.error('\\n  dvx installed. Run: dvx auth create --help\\n')\""
   },
   "engines": {
     "node": ">=18"
@@ -26,10 +29,14 @@
   "packageManager": "pnpm@10.31.0",
   "license": "MIT",
   "pnpm": {
-    "onlyBuiltDependencies": ["better-sqlite3", "esbuild"]
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild"
+    ]
   },
   "dependencies": {
     "@azure/msal-node": "^2.16.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "better-sqlite3": "^12.6.2",
     "commander": "^12.1.0",
