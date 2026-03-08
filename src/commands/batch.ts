@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { z } from 'zod'
 import { createClient } from '../client/create-client.js'
-import { ValidationError } from '../errors.js'
 import { buildBatchBody, chunkArray, type BatchOperation } from '../utils/batch-builder.js'
+import { parseJsonPayload } from '../utils/parse-json.js'
 
 const BatchOperationSchema = z.object({
   method: z.enum(['GET', 'POST', 'PATCH', 'DELETE']),
@@ -24,12 +24,7 @@ export async function batch(options: BatchOptions): Promise<void> {
   const { client } = await createClient({ dryRun: options.dryRun })
 
   const content = readFileSync(options.file, 'utf-8')
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(content)
-  } catch {
-    throw new ValidationError('Invalid JSON in batch file')
-  }
+  const parsed: unknown = parseJsonPayload(content)
 
   const operations = BatchFileSchema.parse(parsed) as BatchOperation[]
   const chunks = chunkArray(operations, 1000)

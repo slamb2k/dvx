@@ -1,5 +1,6 @@
 import { createClient } from '../client/create-client.js'
 import { ValidationError } from '../errors.js'
+import { parseJsonPayload } from '../utils/parse-json.js'
 
 interface UpsertOptions {
   matchField: string
@@ -8,12 +9,7 @@ interface UpsertOptions {
 }
 
 export async function upsertRecord(entityName: string, options: UpsertOptions): Promise<void> {
-  let data: Record<string, unknown>
-  try {
-    data = JSON.parse(options.json) as Record<string, unknown>
-  } catch {
-    throw new ValidationError('Invalid JSON payload')
-  }
+  const data = parseJsonPayload(options.json)
 
   const matchValue = data[options.matchField]
   if (matchValue === undefined) {
