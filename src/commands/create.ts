@@ -1,12 +1,10 @@
 import { createClient } from '../client/create-client.js'
 import { parseJsonPayload } from '../utils/parse-json.js'
-import { formatMutationResult, type OutputFormat } from '../utils/output.js'
+import { formatMutationResult } from '../utils/output.js'
+import { BaseMutationOptions } from './types.js'
 
-interface CreateOptions {
+interface CreateOptions extends BaseMutationOptions {
   json: string
-  dryRun: boolean
-  callerObjectId?: string
-  output?: OutputFormat
 }
 
 export async function createRecord(entityName: string, options: CreateOptions): Promise<void> {

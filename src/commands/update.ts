@@ -1,13 +1,11 @@
 import { createClient } from '../client/create-client.js'
 import { parseJsonPayload } from '../utils/parse-json.js'
 import { validateGuid } from '../utils/validation.js'
-import { formatMutationResult, type OutputFormat } from '../utils/output.js'
+import { formatMutationResult } from '../utils/output.js'
+import { BaseMutationOptions } from './types.js'
 
-interface UpdateOptions {
+interface UpdateOptions extends BaseMutationOptions {
   json: string
-  dryRun: boolean
-  callerObjectId?: string
-  output?: OutputFormat
 }
 
 export async function updateRecord(entityName: string, id: string, options: UpdateOptions): Promise<void> {

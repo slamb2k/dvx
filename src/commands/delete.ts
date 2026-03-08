@@ -1,14 +1,12 @@
 import { createClient } from '../client/create-client.js'
 import { validateGuid } from '../utils/validation.js'
 import { promptConfirm } from '../utils/confirm.js'
-import { formatMutationResult, type OutputFormat } from '../utils/output.js'
+import { formatMutationResult } from '../utils/output.js'
 import { ValidationError } from '../errors.js'
+import { BaseMutationOptions } from './types.js'
 
-interface DeleteOptions {
-  confirm: boolean
-  dryRun: boolean
-  callerObjectId?: string
-  output?: OutputFormat
+interface DeleteOptions extends BaseMutationOptions {
+  confirm?: boolean
 }
 
 export async function deleteRecord(entityName: string, id: string, options: DeleteOptions): Promise<void> {

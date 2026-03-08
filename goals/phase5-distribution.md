@@ -50,7 +50,7 @@ Add developer experience features.
 
 - [x] `--output json` flag on ALL commands (machine-readable)
 - [x] `--output table` as default for interactive use
-- [ ] `--output ndjson` where applicable (query, entities)
+- [x] `--output ndjson` where applicable (query, entities)
 - [ ] Consistent error output format (JSON when `--output json`)
 
 ### MCP Transport

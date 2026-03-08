@@ -1,14 +1,12 @@
 import { createClient } from '../client/create-client.js'
 import { ValidationError } from '../errors.js'
 import { parseJsonPayload } from '../utils/parse-json.js'
-import { formatMutationResult, type OutputFormat } from '../utils/output.js'
+import { formatMutationResult } from '../utils/output.js'
+import { BaseMutationOptions } from './types.js'
 
-interface UpsertOptions {
+interface UpsertOptions extends BaseMutationOptions {
   matchField: string
   json: string
-  dryRun: boolean
-  callerObjectId?: string
-  output?: OutputFormat
 }
 
 export async function upsertRecord(entityName: string, options: UpsertOptions): Promise<void> {

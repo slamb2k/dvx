@@ -1,15 +1,13 @@
 import { createClient } from '../client/create-client.js'
 import { parseJsonPayload } from '../utils/parse-json.js'
 import { ValidationError } from '../errors.js'
-import { formatMutationResult, type OutputFormat } from '../utils/output.js'
+import { formatMutationResult } from '../utils/output.js'
+import { BaseMutationOptions } from './types.js'
 
-interface ActionOptions {
+interface ActionOptions extends BaseMutationOptions {
   json: string
   entity?: string
   id?: string
-  dryRun?: boolean
-  callerObjectId?: string
-  output?: OutputFormat
 }
 
 export async function actionCommand(actionName: string, options: ActionOptions): Promise<void> {
