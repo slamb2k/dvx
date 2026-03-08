@@ -11,6 +11,7 @@ import { updateRecord } from './commands/update.js'
 import { upsertRecord } from './commands/upsert.js'
 import { deleteRecord } from './commands/delete.js'
 import { batch } from './commands/batch.js'
+import { actionCommand } from './commands/action.js'
 
 const program = new Command()
 
@@ -170,6 +171,32 @@ program
   .option('--dry-run', 'Preview the operation without executing', false)
   .action(async (opts) => {
     await batch({ file: opts.file, atomic: opts.atomic, dryRun: opts.dryRun })
+  })
+
+// Action
+program
+  .command('action')
+  .description('Execute a Dataverse action or SDK message')
+  .argument('<action>', 'Action name (PascalCase)')
+  .requiredOption('--json <data>', 'JSON payload for the action')
+  .option('--entity <entity>', 'Entity logical name for bound actions')
+  .option('--id <id>', 'Record GUID for bound actions')
+  .option('--dry-run', 'Preview the operation without executing', false)
+  .action(async (actionName, opts) => {
+    await actionCommand(actionName, { json: opts.json, entity: opts.entity, id: opts.id, dryRun: opts.dryRun })
+  })
+
+// MCP server
+program
+  .command('mcp')
+  .description('Start MCP stdio server for agent consumption')
+  .option('--entities <entities>', 'Comma-separated entity logical names to scope tools')
+  .option('--port <port>', 'Port for HTTP/SSE transport (Phase 5, not yet implemented)', parseInt)
+  .action(async (options) => {
+    const { startMcpServer } = await import('./mcp/server.js')
+    await startMcpServer({
+      entities: options.entities?.split(',').map((e: string) => e.trim()),
+    })
   })
 
 async function main(): Promise<void> {

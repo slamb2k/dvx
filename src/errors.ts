@@ -91,3 +91,10 @@ export class BatchError extends DvxError {
     this.operationErrors = operationErrors
   }
 }
+
+export class ActionError extends DvxError {
+  constructor(message: string, public readonly statusCode?: number) {
+    super(message)
+    this.name = 'ActionError'
+  }
+}
