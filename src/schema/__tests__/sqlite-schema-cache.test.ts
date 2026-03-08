@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { unlinkSync } from 'node:fs'
 import { SqliteSchemaCache } from '../sqlite-schema-cache.js'
 import type { EntitySchemaCacheEntry } from '../schema-cache.js'
@@ -18,13 +18,19 @@ function makeEntry(logicalName: string): EntitySchemaCacheEntry {
   }
 }
 
+let cache: SqliteSchemaCache
+
+beforeEach(() => {
+  cache = new SqliteSchemaCache(DB_PATH)
+})
+
 afterEach(() => {
+  cache.close()
   try { unlinkSync(DB_PATH) } catch { /* ignore */ }
 })
 
 describe('SqliteSchemaCache', () => {
   it('set/get returns entry', () => {
-    const cache = new SqliteSchemaCache(DB_PATH)
     const entry = makeEntry('account')
     cache.set(entry)
     const result = cache.get('account')
@@ -33,7 +39,8 @@ describe('SqliteSchemaCache', () => {
   })
 
   it('expired entry returns undefined', () => {
-    const cache = new SqliteSchemaCache(DB_PATH, 0)
+    cache.close()
+    cache = new SqliteSchemaCache(DB_PATH, 0)
     const entry = makeEntry('account')
     cache.set(entry)
     const result = cache.get('account')
@@ -41,7 +48,6 @@ describe('SqliteSchemaCache', () => {
   })
 
   it('invalidate removes specific entry', () => {
-    const cache = new SqliteSchemaCache(DB_PATH)
     cache.set(makeEntry('account'))
     cache.set(makeEntry('contact'))
     cache.invalidate('account')
@@ -50,7 +56,6 @@ describe('SqliteSchemaCache', () => {
   })
 
   it('clear removes all entries', () => {
-    const cache = new SqliteSchemaCache(DB_PATH)
     cache.set(makeEntry('account'))
     cache.set(makeEntry('contact'))
     cache.clear()

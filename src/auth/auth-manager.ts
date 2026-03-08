@@ -1,6 +1,5 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
-import { execFile } from 'node:child_process'
 import { ConfidentialClientApplication, PublicClientApplication } from '@azure/msal-node'
 import {
   AuthProfileNotFoundError,
@@ -10,6 +9,7 @@ import {
 } from '../errors.js'
 import { AuthConfig, AuthConfigSchema, AuthProfile } from './auth-profile.js'
 import { MsalCachePlugin } from './msal-cache-plugin.js'
+import { openBrowser } from '../utils/browser.js'
 
 const CONFIG_DIR = '.dvx'
 const CONFIG_FILE = 'config.json'
@@ -121,9 +121,7 @@ export class AuthManager {
     const result = await pca.acquireTokenInteractive({
       scopes,
       openBrowser: async (url) => {
-        const platform = process.platform
-        const cmd = platform === 'darwin' ? 'open' : platform === 'win32' ? 'start' : 'xdg-open'
-        await new Promise<void>((resolve) => { execFile(cmd, [url], () => { resolve() }) })
+        openBrowser(url)
       },
       successTemplate: '<h1>Authentication complete. You may close this tab.</h1>',
       errorTemplate: '<h1>Authentication failed: {error}</h1>',
@@ -133,6 +131,7 @@ export class AuthManager {
 
     if (result.account?.homeAccountId) {
       profile.homeAccountId = result.account.homeAccountId
+      // Note: saveProfile does a full config read-modify-write; safe for single-process CLI use
       this.saveProfile(profile)
     }
 
