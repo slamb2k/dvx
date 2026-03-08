@@ -98,3 +98,17 @@ export class ActionError extends DvxError {
     this.name = 'ActionError'
   }
 }
+
+export class ImpersonationPrivilegeError extends DataverseError {
+  constructor(message = 'Caller does not have the Act on Behalf of Another User privilege (prvActOnBehalfOfAnotherUser)') {
+    super(message, 403)
+    this.name = 'ImpersonationPrivilegeError'
+  }
+}
+
+export class PkceFlowError extends AuthError {
+  constructor(message: string) {
+    super(message)
+    this.name = 'PkceFlowError'
+  }
+}
