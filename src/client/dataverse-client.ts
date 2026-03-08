@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { DataverseError, EntityNotFoundError, RecordNotFoundError } from '../errors.js'
+import { ActionError, DataverseError, EntityNotFoundError, RecordNotFoundError } from '../errors.js'
 import { AuthManager } from '../auth/auth-manager.js'
 import { SchemaCache, EntitySchemaCacheEntry, AttributeDefinition } from '../schema/schema-cache.js'
 import { withRetry } from '../utils/retry.js'
@@ -371,16 +371,23 @@ export class DataverseClient {
       return null
     }
 
-    return withRetry(async () => {
-      const response = await this.request(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
+    try {
+      return await withRetry(async () => {
+        const response = await this.request(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        if (response.status === 204) return null
+        const data = await response.json() as unknown
+        return z.record(z.string(), z.unknown()).parse(data)
       })
-      if (response.status === 204) return null
-      const data = await response.json() as unknown
-      return z.record(z.string(), z.unknown()).parse(data)
-    })
+    } catch (err) {
+      if (err instanceof DataverseError) {
+        throw new ActionError(err.message, err.statusCode)
+      }
+      throw err
+    }
   }
 
   async executeBatch(body: string, boundary: string): Promise<string> {

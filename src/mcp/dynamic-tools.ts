@@ -3,10 +3,18 @@ import type { DataverseClient } from '../client/dataverse-client.js'
 import type { EntitySchemaCacheEntry } from '../schema/schema-cache.js'
 import { ValidationError } from '../errors.js'
 
-export function buildEntityToolDefinitions(schemas: EntitySchemaCacheEntry[]): Tool[] {
+export const ENTITY_TOOL_PREFIXES = ['create_', 'update_', 'get_', 'query_'] as const
+
+export function buildEntityToolDefinitions(schemas: EntitySchemaCacheEntry[]): {
+  tools: Tool[]
+  entitySetMap: Map<string, string>
+} {
   const tools: Tool[] = []
+  const entitySetMap = new Map<string, string>()
   for (const schema of schemas) {
     const { logicalName, entitySetName, attributes } = schema
+
+    entitySetMap.set(logicalName, entitySetName)
 
     const attrProps: Record<string, { type: string; description?: string }> = {}
     for (const attr of attributes) {
@@ -53,17 +61,17 @@ export function buildEntityToolDefinitions(schemas: EntitySchemaCacheEntry[]): T
         },
       },
     )
-    void entitySetName
   }
-  return tools
+  return { tools, entitySetMap }
 }
 
 export async function handleEntityTool(
   name: string,
   args: Record<string, unknown>,
   client: DataverseClient,
+  entitySetMap?: Map<string, string>,
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const prefixes = ['create_', 'update_', 'get_', 'query_']
+  const prefixes = [...ENTITY_TOOL_PREFIXES]
   const prefix = prefixes.find((p) => name.startsWith(p))
   if (!prefix) throw new ValidationError(`Unknown entity tool: ${name}`)
 
@@ -86,13 +94,14 @@ export async function handleEntityTool(
       break
     }
     case 'query_': {
-      const schema = await client.getEntitySchema(entityName)
+      const resolvedEntitySetName = entitySetMap?.get(entityName)
+        ?? (await client.getEntitySchema(entityName)).entitySetName
       const parts: string[] = []
       if (args['filter']) parts.push(`$filter=${args['filter'] as string}`)
       if (args['fields']) parts.push(`$select=${args['fields'] as string}`)
       if (args['top']) parts.push(`$top=${args['top'] as number}`)
       const queryString = parts.join('&')
-      result = await client.query(schema.entitySetName, queryString, { pageAll: true })
+      result = await client.query(resolvedEntitySetName, queryString, { pageAll: true })
       break
     }
   }
