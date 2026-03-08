@@ -15,6 +15,11 @@ export async function entities(options: EntitiesOptions): Promise<void> {
     console.log(JSON.stringify(entityList, null, 2))
   } else {
     // Simple table output
+    if (entityList.length === 0) {
+      console.log('No entities found.')
+      return
+    }
+
     const maxName = Math.max(...entityList.map((e) => e.logicalName.length), 12)
     const maxDisplay = Math.max(...entityList.map((e) => e.displayName.length), 12)
 
