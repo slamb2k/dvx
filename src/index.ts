@@ -172,11 +172,6 @@ program
     await batch({ file: opts.file, atomic: opts.atomic, dryRun: opts.dryRun })
   })
 
-// Error handling
-program.hook('postAction', () => {
-  // Clean exit after successful command
-})
-
 async function main(): Promise<void> {
   try {
     await program.parseAsync(process.argv)
