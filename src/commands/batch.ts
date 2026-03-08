@@ -3,7 +3,8 @@ import { z } from 'zod'
 import { createClient } from '../client/create-client.js'
 import { buildBatchBody, chunkArray, type BatchOperation } from '../utils/batch-builder.js'
 import { ValidationError } from '../errors.js'
-import { formatMutationResult, type OutputFormat } from '../utils/output.js'
+import { formatMutationResult } from '../utils/output.js'
+import { BaseMutationOptions } from './types.js'
 
 const BatchOperationSchema = z.object({
   method: z.enum(['GET', 'POST', 'PATCH', 'DELETE']),
@@ -15,12 +16,9 @@ const BatchOperationSchema = z.object({
 
 const BatchFileSchema = z.array(BatchOperationSchema)
 
-interface BatchOptions {
+interface BatchOptions extends BaseMutationOptions {
   file: string
   atomic: boolean
-  dryRun: boolean
-  callerObjectId?: string
-  output?: OutputFormat
 }
 
 export async function batch(options: BatchOptions): Promise<void> {
