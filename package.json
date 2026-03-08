@@ -18,6 +18,7 @@
     "node": ">=18"
   },
   "keywords": ["dataverse", "dynamics365", "mcp", "cli"],
+  "packageManager": "pnpm@10.31.0",
   "license": "MIT",
   "dependencies": {
     "@azure/msal-node": "^2.16.0",
