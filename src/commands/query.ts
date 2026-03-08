@@ -2,6 +2,18 @@ import { readFileSync } from 'node:fs'
 import { createClient } from '../client/create-client.js'
 import { validateFetchXml } from '../utils/fetchxml.js'
 
+function printTable(records: Record<string, unknown>[]): void {
+  if (records.length === 0) {
+    console.log('No records found.')
+    return
+  }
+  const keys = Object.keys(records[0]!).filter((k) => !k.startsWith('@'))
+  console.log(keys.join('\t'))
+  for (const record of records) {
+    console.log(keys.map((k) => String(record[k] ?? '')).join('\t'))
+  }
+}
+
 interface QueryOptions {
   odata?: string
   fetchxml?: string
@@ -51,17 +63,7 @@ export async function query(options: QueryOptions): Promise<void> {
       if (options.output === 'json') {
         console.log(JSON.stringify(records, null, 2))
       } else {
-        if (records.length === 0) {
-          console.log('No records found.')
-          return
-        }
-        const firstRecord = records[0] as Record<string, unknown>
-        const keys = Object.keys(firstRecord).filter((k) => !k.startsWith('@'))
-        console.log(keys.join('\t'))
-        for (const record of records) {
-          const r = record as Record<string, unknown>
-          console.log(keys.map((k) => String(r[k] ?? '')).join('\t'))
-        }
+        printTable(records as Record<string, unknown>[])
       }
     }
     return
@@ -104,17 +106,7 @@ export async function query(options: QueryOptions): Promise<void> {
     if (options.output === 'json') {
       console.log(JSON.stringify(records, null, 2))
     } else {
-      // Table output
-      if (records.length === 0) {
-        console.log('No records found.')
-        return
-      }
-
-      const keys = Object.keys(records[0] ?? {}).filter((k) => !k.startsWith('@'))
-      console.log(keys.join('\t'))
-      for (const record of records) {
-        console.log(keys.map((k) => String(record[k] ?? '')).join('\t'))
-      }
+      printTable(records)
     }
   }
 }
