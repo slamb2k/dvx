@@ -2,6 +2,7 @@ import { Command, Option } from 'commander'
 import { authCreate } from './commands/auth-create.js'
 import { authList } from './commands/auth-list.js'
 import { authSelect } from './commands/auth-select.js'
+import { authLogin } from './commands/auth-login.js'
 import { entities } from './commands/entities.js'
 import { schema } from './commands/schema.js'
 import { query } from './commands/query.js'
@@ -58,6 +59,17 @@ auth
     await authSelect(profileName)
   })
 
+auth
+  .command('login')
+  .description('Sign in with delegated (user) credentials via browser')
+  .option('--name <name>', 'Profile name', 'default')
+  .requiredOption('--environment-url <url>', 'Dataverse environment URL')
+  .requiredOption('--tenant-id <id>', 'Entra tenant ID')
+  .requiredOption('--client-id <id>', 'App registration client ID')
+  .action(async (opts) => {
+    await authLogin({ name: opts.name, environmentUrl: opts.environmentUrl, tenantId: opts.tenantId, clientId: opts.clientId })
+  })
+
 // Entity list
 program
   .command('entities')
@@ -74,8 +86,10 @@ program
   .argument('<entity>', 'Entity logical name')
   .addOption(new Option('--output <format>', 'Output format').choices(['json', 'table']).default('json'))
   .option('--no-cache', 'Force live fetch, bypass cache')
+  .option('--refresh', 'Invalidate cached schema for this entity before fetching')
+  .option('--refresh-all', 'Clear entire schema cache before fetching')
   .action(async (entityName, opts) => {
-    await schema(entityName, { output: opts.output, noCache: !opts.cache })
+    await schema(entityName, { output: opts.output, noCache: !opts.cache, refresh: opts.refresh, refreshAll: opts.refreshAll })
   })
 
 // Query
@@ -122,8 +136,9 @@ program
   .argument('<entity>', 'Entity logical name')
   .requiredOption('--json <data>', 'JSON payload for the record')
   .option('--dry-run', 'Preview the operation without executing', false)
+  .option('--as-user <id>', 'Run as this Entra user object ID (CallerObjectId)')
   .action(async (entityName, opts) => {
-    await createRecord(entityName, { json: opts.json, dryRun: opts.dryRun })
+    await createRecord(entityName, { json: opts.json, dryRun: opts.dryRun, callerObjectId: opts.asUser })
   })
 
 // Update
@@ -134,8 +149,9 @@ program
   .argument('<id>', 'Record GUID')
   .requiredOption('--json <data>', 'JSON payload with fields to update')
   .option('--dry-run', 'Preview the operation without executing', false)
+  .option('--as-user <id>', 'Run as this Entra user object ID (CallerObjectId)')
   .action(async (entityName, id, opts) => {
-    await updateRecord(entityName, id, { json: opts.json, dryRun: opts.dryRun })
+    await updateRecord(entityName, id, { json: opts.json, dryRun: opts.dryRun, callerObjectId: opts.asUser })
   })
 
 // Upsert
@@ -146,8 +162,9 @@ program
   .requiredOption('--match-field <field>', 'Field to match on for upsert')
   .requiredOption('--json <data>', 'JSON payload for the record')
   .option('--dry-run', 'Preview the operation without executing', false)
+  .option('--as-user <id>', 'Run as this Entra user object ID (CallerObjectId)')
   .action(async (entityName, opts) => {
-    await upsertRecord(entityName, { matchField: opts.matchField, json: opts.json, dryRun: opts.dryRun })
+    await upsertRecord(entityName, { matchField: opts.matchField, json: opts.json, dryRun: opts.dryRun, callerObjectId: opts.asUser })
   })
 
 // Delete
@@ -158,8 +175,9 @@ program
   .argument('<id>', 'Record GUID')
   .option('--confirm', 'Skip confirmation prompt', false)
   .option('--dry-run', 'Preview the operation without executing', false)
+  .option('--as-user <id>', 'Run as this Entra user object ID (CallerObjectId)')
   .action(async (entityName, id, opts) => {
-    await deleteRecord(entityName, id, { confirm: opts.confirm, dryRun: opts.dryRun })
+    await deleteRecord(entityName, id, { confirm: opts.confirm, dryRun: opts.dryRun, callerObjectId: opts.asUser })
   })
 
 // Batch
@@ -169,8 +187,9 @@ program
   .requiredOption('--file <path>', 'JSON file with batch operations')
   .option('--atomic', 'Wrap operations in a changeset for atomicity', false)
   .option('--dry-run', 'Preview the operation without executing', false)
+  .option('--as-user <id>', 'Run as this Entra user object ID (CallerObjectId)')
   .action(async (opts) => {
-    await batch({ file: opts.file, atomic: opts.atomic, dryRun: opts.dryRun })
+    await batch({ file: opts.file, atomic: opts.atomic, dryRun: opts.dryRun, callerObjectId: opts.asUser })
   })
 
 // Action
@@ -182,8 +201,9 @@ program
   .option('--entity <entity>', 'Entity logical name for bound actions')
   .option('--id <id>', 'Record GUID for bound actions')
   .option('--dry-run', 'Preview the operation without executing', false)
+  .option('--as-user <id>', 'Run as this Entra user object ID (CallerObjectId)')
   .action(async (actionName, opts) => {
-    await actionCommand(actionName, { json: opts.json, entity: opts.entity, id: opts.id, dryRun: opts.dryRun })
+    await actionCommand(actionName, { json: opts.json, entity: opts.entity, id: opts.id, dryRun: opts.dryRun, callerObjectId: opts.asUser })
   })
 
 // MCP server
