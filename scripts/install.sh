@@ -25,15 +25,14 @@ TMPDIR=$(mktemp -d)
 curl -fsSL "$URL" -o "${TMPDIR}/dvx.zip"
 curl -fsSL "$SHA256_URL" -o "${TMPDIR}/dvx.zip.sha256"
 
-# Rewrite the checksum file to reference the local filename so the verify tool
-# can find it regardless of how the digest was originally recorded.
-sed -i "s|.*|$(cut -d' ' -f1 "${TMPDIR}/dvx.zip.sha256")  ${TMPDIR}/dvx.zip|" "${TMPDIR}/dvx.zip.sha256"
-
+# Verify checksum — the .sha256 file contains just the hash
+EXPECTED=$(cat "${TMPDIR}/dvx.zip.sha256" | tr -d '[:space:]')
 if [ "$OS" = "darwin" ]; then
-  shasum -a 256 -c "${TMPDIR}/dvx.zip.sha256" || { echo "Checksum verification failed" >&2; rm -rf "$TMPDIR"; exit 1; }
+  ACTUAL=$(shasum -a 256 "${TMPDIR}/dvx.zip" | cut -d' ' -f1)
 else
-  sha256sum -c "${TMPDIR}/dvx.zip.sha256" || { echo "Checksum verification failed" >&2; rm -rf "$TMPDIR"; exit 1; }
+  ACTUAL=$(sha256sum "${TMPDIR}/dvx.zip" | cut -d' ' -f1)
 fi
+[ "$EXPECTED" = "$ACTUAL" ] || { echo "Checksum verification failed (expected $EXPECTED, got $ACTUAL)" >&2; rm -rf "$TMPDIR"; exit 1; }
 
 unzip -q "${TMPDIR}/dvx.zip" -d "${TMPDIR}"
 install -m 755 "${TMPDIR}/dvx" /usr/local/bin/dvx

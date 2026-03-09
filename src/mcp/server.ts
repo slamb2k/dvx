@@ -107,7 +107,9 @@ export async function startMcpServer(opts: { entities?: string[]; transport?: 's
         },
       })
 
-      await mcpServer.connect(transport)
+      // Type assertion needed: StreamableHTTPServerTransport's optional callback
+      // properties are not compatible with Transport under exactOptionalPropertyTypes
+      await mcpServer.connect(transport as Parameters<typeof mcpServer.connect>[0])
       await transport.handleRequest(req, res, await parseBody(req))
     })
 

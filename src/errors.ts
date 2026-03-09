@@ -35,8 +35,8 @@ export class TokenAcquisitionError extends AuthError {
 
 export class DataverseError extends DvxError {
   public readonly statusCode: number
-  public readonly errorCode?: string
-  public readonly retryAfterSeconds?: number
+  public readonly errorCode?: string | undefined
+  public readonly retryAfterSeconds?: number | undefined
 
   constructor(message: string, statusCode: number, errorCode?: string, retryAfterSeconds?: number) {
     super(message)

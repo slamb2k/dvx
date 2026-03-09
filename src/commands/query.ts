@@ -15,14 +15,14 @@ function printTable(records: Record<string, unknown>[]): void {
 }
 
 interface QueryOptions {
-  odata?: string
-  fetchxml?: string
-  file?: string
-  fields?: string
+  odata?: string | undefined
+  fetchxml?: string | undefined
+  file?: string | undefined
+  fields?: string | undefined
   pageAll: boolean
-  maxRows?: number
+  maxRows?: number | undefined
   output: 'json' | 'ndjson' | 'table'
-  dryRun?: boolean
+  dryRun?: boolean | undefined
 }
 
 export async function query(options: QueryOptions): Promise<void> {

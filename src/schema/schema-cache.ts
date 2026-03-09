@@ -11,8 +11,8 @@ export interface AttributeDefinition {
   attributeType: string
   requiredLevel: 'None' | 'SystemRequired' | 'ApplicationRequired' | 'Recommended'
   isCustomAttribute: boolean
-  maxLength?: number
-  targets?: string[]
+  maxLength?: number | undefined
+  targets?: string[] | undefined
 }
 
 export interface EntitySchemaCacheEntry {
