@@ -14,13 +14,14 @@ export function chunkArray<T>(arr: T[], size: number): T[][] {
   return chunks
 }
 
-function serializeOperation(op: BatchOperation, boundary: string): string[] {
+function serializeOperation(op: BatchOperation, boundary: string, autoContentId?: string): string[] {
   const parts: string[] = []
   parts.push(`--${boundary}`)
   parts.push('Content-Type: application/http')
   parts.push('Content-Transfer-Encoding: binary')
-  if (op.contentId) {
-    parts.push(`Content-ID: ${op.contentId}`)
+  const contentId = op.contentId ?? autoContentId
+  if (contentId) {
+    parts.push(`Content-ID: ${contentId}`)
   }
   parts.push('')
   parts.push(`${op.method} ${op.path} HTTP/1.1`)
@@ -30,12 +31,16 @@ function serializeOperation(op: BatchOperation, boundary: string): string[] {
     'Accept': 'application/json',
     ...(op.headers ?? {}),
   }
+  const serializedBody = op.body !== undefined ? JSON.stringify(op.body) : undefined
+  if (serializedBody !== undefined) {
+    headers['Content-Length'] = String(Buffer.byteLength(serializedBody, 'utf-8'))
+  }
   for (const [key, value] of Object.entries(headers)) {
     parts.push(`${key}: ${value}`)
   }
   parts.push('')
-  if (op.body !== undefined) {
-    parts.push(JSON.stringify(op.body))
+  if (serializedBody !== undefined) {
+    parts.push(serializedBody)
   }
   parts.push('')
   return parts
@@ -58,8 +63,9 @@ export function buildBatchBody(
       parts.push(`Content-Type: multipart/mixed;boundary=${changesetBoundary}`)
       parts.push('')
 
-      for (const op of chunk) {
-        parts.push(...serializeOperation(op, changesetBoundary))
+      for (let opIndex = 0; opIndex < chunk.length; opIndex++) {
+        const op = chunk[opIndex]!
+        parts.push(...serializeOperation(op, changesetBoundary, String(chunkIndex * changesetSize + opIndex + 1)))
       }
 
       parts.push(`--${changesetBoundary}--`)
