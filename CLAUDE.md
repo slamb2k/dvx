@@ -14,7 +14,11 @@ Read `SPEC.md` for the full implementation specification. It is the source of tr
 - pnpm (package manager)
 - `@modelcontextprotocol/sdk` (MCP stdio server)
 - `@azure/msal-node` (auth — both client credentials and PKCE)
+- `@microsoft/microsoft-graph-client` (Graph API integration)
+- `better-sqlite3` (SQLite schema cache)
 - `commander` (CLI framework)
+- `fast-xml-parser` (FetchXML parsing)
+- `zod` (response validation)
 - `tsup` (build)
 - No ORM, no heavy framework — this is a CLI tool
 
@@ -36,7 +40,7 @@ Read `SPEC.md` for the full implementation specification. It is the source of tr
 - All errors as typed custom Error subclasses in `src/errors.ts`
 - Async/await throughout — no callbacks, no `.then()` chains
 - All Web API responses validated with `zod` before use
-- `src/` structure: `auth/`, `client/`, `commands/`, `mcp/`, `schema/`, `skills/`, `utils/`
+- `src/` structure: `auth/`, `client/`, `commands/`, `mcp/`, `schema/`, `utils/`
 - Tests in `__tests__/` adjacent to source files
 
 ## Patterns to Follow
@@ -82,14 +86,9 @@ DVX_DEBUG=true                   # verbose HTTP logging
 
 ## Current Phase
 
-Start with **Phase 1** from `SPEC.md`:
-- `dvx auth create --service-principal`
-- `dvx entities`
-- `dvx schema <entity>`
-- `dvx query --odata` (single page + `--page-all`)
-- `dvx get <entity> <id>`
+Phases 1–5 are **complete**. See `SPEC.md` for full details.
 
-Do not implement mutations, FetchXML, batch, or MCP surface until Phase 1 commands are working and tested.
+**Phase 6** is next — `dvx init` Graph API bootstrapper. See `goals/phase6-init-graph.md`.
 
 ## Operating Framework: GOTCHA
 
