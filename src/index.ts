@@ -264,3 +264,5 @@ async function main(): Promise<void> {
 }
 
 export default main
+
+main()
