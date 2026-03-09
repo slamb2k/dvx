@@ -41,6 +41,9 @@ Read `SPEC.md` for the full implementation specification. It is the source of tr
 - Async/await throughout — no callbacks, no `.then()` chains
 - All Web API responses validated with `zod` before use
 - `src/` structure: `auth/`, `client/`, `commands/`, `mcp/`, `schema/`, `utils/`
+- `skills/` — domain-specific SKILL.md files for agent instruction:
+  `dvx-auth/`, `dvx-batch/`, `dvx-dataverse-gotchas/`, `dvx-field-service/`,
+  `dvx-sales/`, `dvx-schema/`, `dvx-service/`
 - Tests in `__tests__/` adjacent to source files
 
 ## Patterns to Follow
