@@ -49,6 +49,101 @@ jobs:
           ADDON=$(find node_modules/better-sqlite3 -name "*.node" | head -1)
           cp "$ADDON" better_sqlite3.node
           zip dvx-${{ matrix.target }}.zip ${{ matrix.binary }} better_sqlite3.node
+          if command -v sha256sum >/dev/null 2>&1; then
+            sha256sum dvx-${{ matrix.target }}.zip | cut -d' ' -f1 > dvx-${{ matrix.target }}.zip.sha256
+          else
+            shasum -a 256 dvx-${{ matrix.target }}.zip | cut -d' ' -f1 > dvx-${{ matrix.target }}.zip.sha256
+          fi
       - uses: softprops/action-gh-release@v2
         with:
-          files: dvx-${{ matrix.target }}.zip
+          files: |
+            dvx-${{ matrix.target }}.zip
+            dvx-${{ matrix.target }}.zip.sha256
+
+  publish-npm:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+      - run: pnpm install
+      - run: pnpm publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+  update-homebrew:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: slamb2k/homebrew-dvx
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Update formula
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          LINUX_URL="https://github.com/slamb2k/dvx/releases/download/v${VERSION}/dvx-linux-x64.zip"
+          DARWIN_ARM_URL="https://github.com/slamb2k/dvx/releases/download/v${VERSION}/dvx-darwin-arm64.zip"
+          DARWIN_X64_URL="https://github.com/slamb2k/dvx/releases/download/v${VERSION}/dvx-darwin-x64.zip"
+
+          # Download and compute checksums
+          curl -sL "$LINUX_URL" -o linux.zip
+          curl -sL "$DARWIN_ARM_URL" -o darwin-arm64.zip
+          curl -sL "$DARWIN_X64_URL" -o darwin-x64.zip
+          LINUX_SHA=$(sha256sum linux.zip | cut -d' ' -f1)
+          DARWIN_ARM_SHA=$(sha256sum darwin-arm64.zip | cut -d' ' -f1)
+          DARWIN_X64_SHA=$(sha256sum darwin-x64.zip | cut -d' ' -f1)
+
+          mkdir -p Formula
+          cat > Formula/dvx.rb << FORMULA
+          class Dvx < Formula
+            desc "Agent-first CLI and MCP server for Microsoft Dataverse"
+            homepage "https://github.com/slamb2k/dvx"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              if Hardware::CPU.arm?
+                url "${DARWIN_ARM_URL}"
+                sha256 "${DARWIN_ARM_SHA}"
+              else
+                url "${DARWIN_X64_URL}"
+                sha256 "${DARWIN_X64_SHA}"
+              end
+            end
+
+            on_linux do
+              url "${LINUX_URL}"
+              sha256 "${LINUX_SHA}"
+            end
+
+            def install
+              bin.install "dvx"
+              lib.install "better_sqlite3.node"
+            end
+
+            test do
+              assert_match "dvx", shell_output("#{bin}/dvx --version")
+            end
+          end
+          FORMULA
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/dvx.rb
+          git commit -m "dvx ${GITHUB_REF#refs/tags/}"
+          git push
