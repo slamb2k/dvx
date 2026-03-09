@@ -12,7 +12,7 @@ interface DeleteOptions extends BaseMutationOptions {
 export async function deleteRecord(entityName: string, id: string, options: DeleteOptions): Promise<void> {
   validateGuid(id)
 
-  if (!options.confirm) {
+  if (!options.confirm && !options.dryRun) {
     if (process.stdout.isTTY) {
       const confirmed = await promptConfirm(`Delete record '${id}' from '${entityName}'?`)
       if (!confirmed) {
