@@ -32,7 +32,6 @@ jobs:
           npx @yao-pkg/pkg dist/index.js \
             --target ${{ matrix.pkg_target }} \
             --output dvx \
-            --no-bytecode \
             --public-packages '*'
       - name: Package with native addon
         shell: bash
