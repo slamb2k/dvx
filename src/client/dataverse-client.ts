@@ -147,7 +147,7 @@ export class DataverseClient {
     }
 
     const baseUrl = await this.getBaseUrl()
-    const url = `${baseUrl}/EntityDefinitions(LogicalName='${name}')?$expand=Attributes($select=LogicalName,DisplayName,AttributeType,RequiredLevel,IsCustomAttribute,MaxLength,Targets)`
+    const url = `${baseUrl}/EntityDefinitions(LogicalName='${name}')?$expand=Attributes`
 
     const response = await withRetry(() => this.request(url))
     const json = await response.json()
