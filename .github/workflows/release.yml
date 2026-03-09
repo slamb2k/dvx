@@ -18,10 +18,6 @@ jobs:
             target: darwin-arm64
             pkg_target: node18-macos-arm64
             binary: dvx
-          - os: macos-13
-            target: darwin-x64
-            pkg_target: node18-macos-x64
-            binary: dvx
           - os: windows-latest
             target: win-x64
             pkg_target: node18-win-x64
@@ -31,7 +27,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with: { version: 10 }
       - uses: actions/setup-node@v4
         with: { node-version: '18', cache: 'pnpm' }
       - run: pnpm install
@@ -96,15 +91,12 @@ jobs:
           VERSION="${GITHUB_REF#refs/tags/v}"
           LINUX_URL="https://github.com/slamb2k/dvx/releases/download/v${VERSION}/dvx-linux-x64.zip"
           DARWIN_ARM_URL="https://github.com/slamb2k/dvx/releases/download/v${VERSION}/dvx-darwin-arm64.zip"
-          DARWIN_X64_URL="https://github.com/slamb2k/dvx/releases/download/v${VERSION}/dvx-darwin-x64.zip"
 
           # Download and compute checksums
           curl -sL "$LINUX_URL" -o linux.zip
           curl -sL "$DARWIN_ARM_URL" -o darwin-arm64.zip
-          curl -sL "$DARWIN_X64_URL" -o darwin-x64.zip
           LINUX_SHA=$(sha256sum linux.zip | cut -d' ' -f1)
           DARWIN_ARM_SHA=$(sha256sum darwin-arm64.zip | cut -d' ' -f1)
-          DARWIN_X64_SHA=$(sha256sum darwin-x64.zip | cut -d' ' -f1)
 
           mkdir -p Formula
           cat > Formula/dvx.rb << FORMULA
@@ -115,13 +107,8 @@ jobs:
             license "MIT"
 
             on_macos do
-              if Hardware::CPU.arm?
-                url "${DARWIN_ARM_URL}"
-                sha256 "${DARWIN_ARM_SHA}"
-              else
-                url "${DARWIN_X64_URL}"
-                sha256 "${DARWIN_X64_SHA}"
-              end
+              url "${DARWIN_ARM_URL}"
+              sha256 "${DARWIN_ARM_SHA}"
             end
 
             on_linux do

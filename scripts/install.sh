@@ -16,6 +16,14 @@ case "$ARCH" in
   *) echo "Unsupported architecture: $ARCH" >&2; exit 1 ;;
 esac
 
+# Only linux-x64, darwin-arm64, and win-x64 binaries are published.
+# macOS x64 users should install via npm: npm install -g dvx
+if [ "$OS" = "darwin" ] && [ "$ARCH" = "x64" ]; then
+  echo "Pre-built binaries are only available for Apple Silicon (arm64)." >&2
+  echo "Install via npm instead: npm install -g dvx" >&2
+  exit 1
+fi
+
 FILENAME="dvx-${OS}-${ARCH}.zip"
 URL="https://github.com/${REPO}/releases/download/${VERSION}/${FILENAME}"
 # Note: the release workflow must publish .sha256 files alongside zip artifacts.
