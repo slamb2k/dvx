@@ -36,7 +36,7 @@ jobs:
       - name: Package with native addon
         shell: bash
         run: |
-          ADDON=$(find node_modules/better-sqlite3 -name "*.node" | head -1)
+          ADDON=$(find node_modules -path '*/better-sqlite3/build/Release/better_sqlite3.node' | head -1)
           cp "$ADDON" better_sqlite3.node
           zip dvx-${{ matrix.target }}.zip ${{ matrix.binary }} better_sqlite3.node
           if command -v sha256sum >/dev/null 2>&1; then
