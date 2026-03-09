@@ -41,10 +41,10 @@ const SingleEntityDefinitionSchema = EntityDefinitionSchema.extend({
 })
 
 interface QueryOptions {
-  fields?: string[]
-  pageAll?: boolean
-  maxRows?: number
-  onRecord?: (record: Record<string, unknown>) => void
+  fields?: string[] | undefined
+  pageAll?: boolean | undefined
+  maxRows?: number | undefined
+  onRecord?: ((record: Record<string, unknown>) => void) | undefined
 }
 
 export class DataverseClient {
@@ -55,7 +55,7 @@ export class DataverseClient {
   private dryRun: boolean
   private callerObjectId: string | undefined
 
-  constructor(authManager: AuthManager, schemaCache?: ISchemaCache, opts?: { dryRun?: boolean; callerObjectId?: string }) {
+  constructor(authManager: AuthManager, schemaCache?: ISchemaCache, opts?: { dryRun?: boolean | undefined; callerObjectId?: string | undefined }) {
     this.authManager = authManager
     this.schemaCache = schemaCache ?? new SchemaCache()
     this.debug = process.env['DVX_DEBUG'] === 'true'
@@ -362,7 +362,7 @@ export class DataverseClient {
   async executeAction(
     actionName: string,
     payload: Record<string, unknown>,
-    opts?: { entityName?: string; id?: string },
+    opts?: { entityName?: string | undefined; id?: string | undefined },
   ): Promise<Record<string, unknown> | null> {
     validateActionName(actionName)
 
