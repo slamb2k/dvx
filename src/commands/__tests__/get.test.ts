@@ -55,4 +55,9 @@ describe('get', () => {
     const calls = vi.mocked(console.log).mock.calls.map((c) => c[0])
     expect(calls.some((c) => typeof c === 'string' && c.includes('@odata'))).toBe(false)
   })
+
+  it('throws on invalid entity name', async () => {
+    await expect(get('ac count', '00000000-0000-0000-0000-000000000001', { output: 'json' }))
+      .rejects.toThrow('Invalid entity logical name')
+  })
 })
