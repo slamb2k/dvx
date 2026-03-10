@@ -27,8 +27,8 @@ if ! command -v npm >/dev/null 2>&1; then
   fail "npm is required. Install Node.js from https://nodejs.org"
 fi
 
-info "Installing dvx-cli..."
-npm install -g dvx-cli
+info "Installing @slamb2k/dvx..."
+npm install -g @slamb2k/dvx
 
 success ""
 success "  dvx installed successfully!"
