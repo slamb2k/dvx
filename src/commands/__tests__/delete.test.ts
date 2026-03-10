@@ -1,12 +1,13 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { deleteRecord } from '../delete.js'
 
 const { mockDeleteRecord } = vi.hoisted(() => ({
   mockDeleteRecord: vi.fn(),
 }))
 
-const { mockPromptConfirm } = vi.hoisted(() => ({
-  mockPromptConfirm: vi.fn().mockResolvedValue(true),
+const { mockIsInteractive, mockPromptConfirmClack } = vi.hoisted(() => ({
+  mockIsInteractive: vi.fn().mockReturnValue(false),
+  mockPromptConfirmClack: vi.fn().mockResolvedValue(true),
 }))
 
 vi.mock('../../client/create-client.js', () => ({
@@ -16,25 +17,30 @@ vi.mock('../../client/create-client.js', () => ({
   }),
 }))
 
-vi.mock('../../utils/confirm.js', () => ({
-  promptConfirm: mockPromptConfirm,
+vi.mock('../../utils/cli.js', () => ({
+  isInteractive: mockIsInteractive,
+  promptConfirmClack: mockPromptConfirmClack,
+  createSpinner: () => ({ start() {}, stop() {}, message() {}, error() {} }),
+  logMutationSuccess: vi.fn(),
+  logSuccess: vi.fn(),
+  logError: vi.fn(),
+  logInfo: vi.fn(),
+  logWarn: vi.fn(),
+  logStep: vi.fn(),
 }))
 
 describe('deleteRecord', () => {
   const validId = '00000000-0000-0000-0000-000000000001'
-  let originalIsTTY: boolean | undefined
 
   beforeEach(() => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.spyOn(process.stderr, 'write').mockImplementation(() => true)
     mockDeleteRecord.mockReset()
-    mockPromptConfirm.mockReset()
-    mockPromptConfirm.mockResolvedValue(true)
-    originalIsTTY = process.stdout.isTTY
-  })
-
-  afterEach(() => {
-    process.stdout.isTTY = originalIsTTY as boolean
+    mockIsInteractive.mockReset()
+    mockIsInteractive.mockReturnValue(false)
+    mockPromptConfirmClack.mockReset()
+    mockPromptConfirmClack.mockResolvedValue(true)
   })
 
   it('deletes with --confirm flag', async () => {
@@ -45,24 +51,24 @@ describe('deleteRecord', () => {
     expect(mockDeleteRecord).toHaveBeenCalledWith('account', validId)
   })
 
-  it('prompts for confirmation in TTY mode', async () => {
-    process.stdout.isTTY = true
+  it('prompts for confirmation in interactive mode', async () => {
+    mockIsInteractive.mockReturnValue(true)
     mockDeleteRecord.mockResolvedValue(undefined)
-    mockPromptConfirm.mockResolvedValue(true)
+    mockPromptConfirmClack.mockResolvedValue(true)
 
     await deleteRecord('account', validId, { confirm: false, dryRun: false })
 
-    expect(mockPromptConfirm).toHaveBeenCalled()
+    expect(mockPromptConfirmClack).toHaveBeenCalled()
     expect(mockDeleteRecord).toHaveBeenCalled()
   })
 
   it('aborts when user declines confirmation', async () => {
-    process.stdout.isTTY = true
-    mockPromptConfirm.mockResolvedValue(false)
+    mockIsInteractive.mockReturnValue(true)
+    mockPromptConfirmClack.mockResolvedValue(false)
 
     await deleteRecord('account', validId, { confirm: false, dryRun: false })
 
-    expect(mockPromptConfirm).toHaveBeenCalled()
+    expect(mockPromptConfirmClack).toHaveBeenCalled()
     expect(mockDeleteRecord).not.toHaveBeenCalled()
   })
 

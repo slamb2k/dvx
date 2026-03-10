@@ -12,6 +12,17 @@ vi.mock('../../client/create-client.js', () => ({
   }),
 }))
 
+vi.mock('../../utils/cli.js', () => ({
+  createSpinner: () => ({ start() {}, stop() {}, message() {}, error() {} }),
+  logSuccess: vi.fn(),
+  logError: vi.fn(),
+  logInfo: vi.fn(),
+  logWarn: vi.fn(),
+  logStep: vi.fn(),
+  logMutationSuccess: vi.fn(),
+  isInteractive: () => false,
+}))
+
 vi.mock('node:fs/promises', () => ({
   readFile: vi.fn(),
 }))
