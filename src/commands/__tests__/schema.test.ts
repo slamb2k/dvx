@@ -18,6 +18,17 @@ vi.mock('../../client/create-client.js', () => ({
   }),
 }))
 
+vi.mock('../../utils/cli.js', () => ({
+  createSpinner: () => ({ start() {}, stop() {}, message() {}, error() {} }),
+  isInteractive: () => false,
+  logSuccess: vi.fn(),
+  logError: vi.fn(),
+  logInfo: vi.fn(),
+  logWarn: vi.fn(),
+  logStep: vi.fn(),
+  logMutationSuccess: vi.fn(),
+}))
+
 describe('schema', () => {
   beforeEach(() => {
     vi.spyOn(console, 'log').mockImplementation(() => {})
@@ -69,5 +80,29 @@ describe('schema', () => {
 
     expect(mockClearSchemaCache).toHaveBeenCalled()
     expect(mockInvalidateSchema).not.toHaveBeenCalled()
+  })
+
+  it('outputs schema as table when output is table', async () => {
+    const schemaData = {
+      logicalName: 'account',
+      displayName: 'Account',
+      entitySetName: 'accounts',
+      primaryIdAttribute: 'accountid',
+      primaryNameAttribute: 'name',
+      attributes: [
+        { logicalName: 'name', displayName: 'Name', attributeType: 'String', requiredLevel: 'ApplicationRequired', isCustomAttribute: false },
+        { logicalName: 'accountid', displayName: 'Account ID', attributeType: 'Uniqueidentifier', requiredLevel: 'SystemRequired', isCustomAttribute: false },
+      ],
+      cachedAt: new Date('2024-01-01'),
+      ttlMs: 300000,
+    }
+    mockGetEntitySchema.mockResolvedValue(schemaData)
+
+    await schema('account', { output: 'table', noCache: false })
+
+    const output = vi.mocked(console.log).mock.calls.map((c) => c[0]).join('\n')
+    expect(output).toContain('LogicalName')
+    expect(output).toContain('name')
+    expect(output).toContain('String')
   })
 })

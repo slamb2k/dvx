@@ -1,4 +1,9 @@
-export function renderTable(rows: string[][], headers?: string[]): string {
+export interface TableOptions {
+  dimHeaders?: boolean
+  showRowCount?: boolean
+}
+
+export function renderTable(rows: string[][], headers?: string[], options?: TableOptions): string {
   const allRows = headers ? [headers, ...rows] : rows
   if (allRows.length === 0) return ''
 
@@ -14,16 +19,22 @@ export function renderTable(rows: string[][], headers?: string[]): string {
   for (let i = 0; i < allRows.length; i++) {
     const row = allRows[i]!
     const formatted = row.map((cell, col) => {
-      // Don't pad the last column
-      if (col === row.length - 1) return cell
-      return cell.padEnd((colWidths[col] ?? 0) + 2)
+      let display = cell
+      if (headers && i === 0 && options?.dimHeaders) {
+        display = `\x1b[2m${cell}\x1b[0m`
+      }
+      if (col === row.length - 1) return display
+      return display + ' '.repeat(Math.max(0, (colWidths[col] ?? 0) + 2 - cell.length))
     }).join('')
     lines.push(formatted)
 
-    // Add separator after header row
     if (headers && i === 0) {
       lines.push('-'.repeat(colWidths.reduce((sum, w) => sum + w + 2, 0)))
     }
+  }
+
+  if (options?.showRowCount) {
+    lines.push(`(${rows.length} rows)`)
   }
 
   return lines.join('\n')

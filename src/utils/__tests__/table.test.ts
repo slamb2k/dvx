@@ -40,4 +40,23 @@ describe('renderTable', () => {
   it('returns empty string for empty input', () => {
     expect(renderTable([])).toBe('')
   })
+
+  it('dims headers when dimHeaders is true', () => {
+    const result = renderTable(
+      [['alice', '30']],
+      ['Name', 'Age'],
+      { dimHeaders: true },
+    )
+    expect(result).toContain('\x1b[2m')
+    expect(result).toContain('\x1b[0m')
+  })
+
+  it('shows row count when showRowCount is true', () => {
+    const result = renderTable(
+      [['alice', '30'], ['bob', '25']],
+      ['Name', 'Age'],
+      { showRowCount: true },
+    )
+    expect(result).toContain('(2 rows)')
+  })
 })

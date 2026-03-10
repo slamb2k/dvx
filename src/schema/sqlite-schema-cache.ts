@@ -26,7 +26,7 @@ export class SqliteSchemaCache implements ISchemaCache {
       'SELECT data, cached_at, ttl_ms FROM schema_cache WHERE logical_name = ?'
     ).get(entityName.toLowerCase()) as { data: string; cached_at: number; ttl_ms: number } | undefined
     if (!row) return undefined
-    if (Date.now() - row.cached_at > row.ttl_ms) {
+    if (Date.now() - row.cached_at >= row.ttl_ms) {
       this.db.prepare('DELETE FROM schema_cache WHERE logical_name = ?').run(entityName.toLowerCase())
       return undefined
     }
