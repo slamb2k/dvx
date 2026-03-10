@@ -18,7 +18,7 @@ permissions:
   contents: read
 
 jobs:
-  # ── Build & Test ──────────────────────────────────────────────
+  # ── Build & Test (runs on PRs and pushes, no Azure creds needed) ──
   build:
     runs-on: ubuntu-latest
     if: ${{ !startsWith(github.ref, 'refs/tags/v') }}
@@ -30,6 +30,24 @@ jobs:
       - name: Set variables
         id: vars
         run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and test
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ── Push image to ACR (only on push to main) ─────────────────
+  push:
+    needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
       - name: Login to Azure
         uses: azure/login@v2
@@ -48,19 +66,9 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=sha,prefix=
-            type=ref,event=pr,prefix=pr-
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
-
-      - name: Build and test
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: test
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            type=raw,value=latest
 
       - name: Build and push production image
-        if: github.event_name == 'push'
         uses: docker/build-push-action@v6
         with:
           context: .
@@ -73,7 +81,7 @@ jobs:
 
   # ── Deploy to Dev ─────────────────────────────────────────────
   deploy-dev:
-    needs: build
+    needs: [build, push]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment: dev
