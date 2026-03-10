@@ -36,7 +36,6 @@ program
   .version(version)
   .addHelpText('before', BANNER)
   .action(() => {
-    console.log(BANNER)
     program.outputHelp()
   })
 
