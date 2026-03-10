@@ -4,9 +4,10 @@ interface RetryOptions {
   maxRetries?: number
   baseDelayMs?: number
   maxDelayMs?: number
+  onRetry?: ((attempt: number, delayMs: number, error: DataverseError) => void) | undefined
 }
 
-const DEFAULT_OPTIONS: Required<RetryOptions> = {
+const DEFAULT_OPTIONS: Required<Omit<RetryOptions, 'onRetry'>> = {
   maxRetries: 3,
   baseDelayMs: 1000,
   maxDelayMs: 30000,
@@ -34,6 +35,7 @@ export async function withRetry<T>(
           const delay = error.retryAfterSeconds
             ? Math.min(error.retryAfterSeconds * 1000, opts.maxDelayMs)
             : Math.min(opts.baseDelayMs * Math.pow(2, attempt), opts.maxDelayMs)
+          opts.onRetry?.(attempt + 1, delay, error)
           await sleep(delay)
           continue
         }

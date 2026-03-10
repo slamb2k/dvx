@@ -99,4 +99,16 @@ describe('withRetry', () => {
     // Should be capped at 50ms, not 60000ms
     expect(elapsed).toBeLessThan(500)
   })
+
+  it('calls onRetry callback before retrying', async () => {
+    const onRetry = vi.fn()
+    const fn = vi.fn()
+      .mockRejectedValueOnce(new DataverseError('rate limited', 429))
+      .mockResolvedValue('ok')
+
+    await withRetry(fn, { baseDelayMs: 1, maxRetries: 3, onRetry })
+
+    expect(onRetry).toHaveBeenCalledTimes(1)
+    expect(onRetry).toHaveBeenCalledWith(1, expect.any(Number), expect.any(DataverseError))
+  })
 })
