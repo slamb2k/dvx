@@ -42,7 +42,11 @@ jobs:
         run: |
           ADDON=$(find node_modules -path '*/better-sqlite3/build/Release/better_sqlite3.node' | head -1)
           cp "$ADDON" better_sqlite3.node
-          zip dvx-${{ matrix.target }}.zip ${{ matrix.binary }} better_sqlite3.node
+          if command -v zip >/dev/null 2>&1; then
+            zip dvx-${{ matrix.target }}.zip ${{ matrix.binary }} better_sqlite3.node
+          else
+            7z a dvx-${{ matrix.target }}.zip ${{ matrix.binary }} better_sqlite3.node
+          fi
           if command -v sha256sum >/dev/null 2>&1; then
             sha256sum dvx-${{ matrix.target }}.zip | cut -d' ' -f1 > dvx-${{ matrix.target }}.zip.sha256
           else

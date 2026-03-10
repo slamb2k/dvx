@@ -2,7 +2,7 @@ import * as clack from '@clack/prompts'
 import { createClient } from '../client/create-client.js'
 import { buildBatchBody, type BatchOperation } from '../utils/batch-builder.js'
 import { renderTable } from '../utils/table.js'
-import { EntityNotFoundError, ImpersonationPrivilegeError, ValidationError } from '../errors.js'
+import { DataverseError, EntityNotFoundError, ImpersonationPrivilegeError, ValidationError } from '../errors.js'
 import { createSpinner, isInteractive, logWarn, type SpinnerHandle } from '../utils/cli.js'
 import type { DataverseClient } from '../client/dataverse-client.js'
 
@@ -30,7 +30,7 @@ interface DemoStep {
   name: string
   tier: DemoTier
   callout: string
-  run: (ctx: DemoContext, s: SpinnerHandle) => Promise<void>
+  run: (ctx: DemoContext, s: SpinnerHandle) => Promise<string | void>
 }
 
 const DEMO_PREFIX = '[dvx-demo]'
@@ -76,8 +76,27 @@ async function checkOpportunityAvailable(client: DataverseClient): Promise<boole
     return true
   } catch (err) {
     if (err instanceof EntityNotFoundError) return false
+    if (err instanceof DataverseError && (err.statusCode === 404 || err.message.includes('does not exist'))) return false
     throw err
   }
+}
+
+function logData(text: string): void {
+  if (isInteractive()) {
+    clack.log.step(text)
+  } else {
+    console.log(text)
+  }
+}
+
+function formatRecords(records: Record<string, unknown>[], maxRows = 5): string {
+  if (records.length === 0) return '(no records)'
+  const subset = records.slice(0, maxRows)
+  const keys = Object.keys(subset[0]!)
+  const rows = subset.map((r) => keys.map((k) => String(r[k] ?? '')))
+  let out = renderTable(rows, keys, { dimHeaders: true })
+  if (records.length > maxRows) out += `\n  ... and ${records.length - maxRows} more`
+  return out
 }
 
 async function runStep(step: DemoStep, ctx: DemoContext): Promise<DemoResult> {
@@ -85,8 +104,9 @@ async function runStep(step: DemoStep, ctx: DemoContext): Promise<DemoResult> {
   const start = performance.now()
   try {
     s.start(step.name)
-    await step.run(ctx, s)
+    const output = await step.run(ctx, s)
     s.stop(step.name)
+    if (output) logData(output)
     callout(step.callout)
     return { name: step.name, status: 'pass', elapsedMs: Math.round(performance.now() - start) }
   } catch (err) {
@@ -166,6 +186,11 @@ const ALL_DEMO_STEPS: DemoStep[] = [
     async run(ctx, s) {
       const list = await ctx.client.listEntities()
       s.message(`Found ${list.length} entities`)
+      const sample = list.slice(0, 8)
+      const rows = sample.map((e) => [e.logicalName, e.displayName, e.entitySetName])
+      let out = renderTable(rows, ['Logical Name', 'Display Name', 'Entity Set'], { dimHeaders: true })
+      if (list.length > 8) out += `\n  ... and ${list.length - 8} more`
+      return out
     },
   },
   {
@@ -175,6 +200,11 @@ const ALL_DEMO_STEPS: DemoStep[] = [
     async run(ctx, s) {
       const schema = await ctx.client.getEntitySchema('account')
       s.message(`account: ${schema.attributes.length} attributes`)
+      const sample = schema.attributes.slice(0, 8)
+      const rows = sample.map((a) => [a.logicalName, a.attributeType, a.requiredLevel])
+      let out = renderTable(rows, ['Attribute', 'Type', 'Required'], { dimHeaders: true })
+      if (schema.attributes.length > 8) out += `\n  ... and ${schema.attributes.length - 8} more`
+      return out
     },
   },
 
@@ -189,6 +219,7 @@ const ALL_DEMO_STEPS: DemoStep[] = [
         description: 'Demo account created by dvx demo — will be auto-cleaned',
       })
       ctx.createdIds.set('account', id)
+      return `Created account ${id}`
     },
   },
   {
@@ -202,6 +233,7 @@ const ALL_DEMO_STEPS: DemoStep[] = [
         websiteurl: 'https://dvx.dev',
         telephone1: '+1-555-DVX-DEMO',
       })
+      return `Updated ${id}: websiteurl, telephone1`
     },
   },
   {
@@ -217,6 +249,7 @@ const ALL_DEMO_STEPS: DemoStep[] = [
         ...(accountId ? { 'parentcustomerid_account@odata.bind': `/accounts(${accountId})` } : {}),
       })
       ctx.createdIds.set('contact', id)
+      return `Created contact ${id}${accountId ? ` (linked to account ${accountId})` : ''}`
     },
   },
 
@@ -228,6 +261,7 @@ const ALL_DEMO_STEPS: DemoStep[] = [
     async run(ctx, s) {
       const results = await ctx.client.query('accounts', "$filter=startswith(name,'[dvx-demo]')&$orderby=name&$top=5&$select=name,accountid")
       s.message(`${results.length} account(s) matched`)
+      return formatRecords(results)
     },
   },
   {
@@ -247,8 +281,9 @@ const ALL_DEMO_STEPS: DemoStep[] = [
     </link-entity>
   </entity>
 </fetch>`
-      const results = await ctx.client.queryFetchXml('account', fetchXml)
+      const results = await ctx.client.queryFetchXml('account', fetchXml) as Record<string, unknown>[]
       s.message(`${results.length} record(s) with linked contacts`)
+      return formatRecords(results)
     },
   },
   {
@@ -264,6 +299,9 @@ const ALL_DEMO_STEPS: DemoStep[] = [
       const id = list[0]!['accountid'] as string
       const record = await ctx.client.getRecord('account', id, ['name', 'createdon'])
       s.message(`Retrieved: ${(record['name'] as string) ?? id}`)
+      const keys = Object.keys(record)
+      const rows = keys.map((k) => [k, String(record[k] ?? '')])
+      return renderTable(rows, ['Field', 'Value'], { dimHeaders: true })
     },
   },
 
@@ -277,6 +315,7 @@ const ALL_DEMO_STEPS: DemoStep[] = [
       if (!id) throw new Error('No account to delete — create step must run first')
       await ctx.client.deleteRecord('account', id)
       ctx.createdIds.delete('account')
+      return `Deleted account ${id}`
     },
   },
 
@@ -294,7 +333,7 @@ const ALL_DEMO_STEPS: DemoStep[] = [
       const boundary = `batch_dvx_demo_${Date.now()}`
       const body = buildBatchBody(ops, boundary, { atomic: true })
       await ctx.client.executeBatch(body, boundary)
-      // Batch records will be cleaned up by the orphan sweep
+      return `5 accounts created atomically in a single changeset`
     },
   },
   {
@@ -305,6 +344,9 @@ const ALL_DEMO_STEPS: DemoStep[] = [
       const result = await ctx.client.executeAction('WhoAmI', {}) as Record<string, unknown>
       const userId = result['UserId'] as string | undefined
       if (userId) s.message(`Authenticated as ${userId}`)
+      const keys = Object.keys(result)
+      const rows = keys.map((k) => [k, String(result[k] ?? '')])
+      return renderTable(rows, ['Field', 'Value'], { dimHeaders: true })
     },
   },
   {
@@ -322,6 +364,7 @@ const ALL_DEMO_STEPS: DemoStep[] = [
       const { client: impersonatedClient } = await createClient({ callerObjectId: userId })
       const results = await impersonatedClient.query('accounts', '$top=1&$select=name')
       s.message(`Impersonated query returned ${results.length} record(s)`)
+      return formatRecords(results)
     },
   },
   {
@@ -335,8 +378,9 @@ const ALL_DEMO_STEPS: DemoStep[] = [
     <attribute name="accountid" aggregate="count" alias="count" />
   </entity>
 </fetch>`
-      const results = await ctx.client.queryFetchXml('account', fetchXml)
+      const results = await ctx.client.queryFetchXml('account', fetchXml) as Record<string, unknown>[]
       s.message(`${results.length} state group(s)`)
+      return formatRecords(results)
     },
   },
 ]
@@ -391,6 +435,7 @@ export async function demo(options: DemoOptions): Promise<void> {
       results: results.map((r) => ({ name: r.name, status: r.status, elapsedMs: r.elapsedMs, ...(r.error ? { error: r.error } : {}) })),
     }, null, 2))
   } else {
+    console.log('')
     renderSummary(results)
   }
 

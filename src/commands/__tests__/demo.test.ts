@@ -170,6 +170,24 @@ describe('demo', () => {
     expect(mockListEntities).toHaveBeenCalled()
   })
 
+  it('opportunity DataverseError 404 does not abort demo', async () => {
+    setupMocks()
+    const { DataverseError } = await import('../../errors.js')
+    mockGetEntitySchema.mockImplementation(async (entity: string) => {
+      if (entity === 'opportunity') throw new DataverseError("EntityMetadata With Id = LogicalName='opportunity' does not exist.", 404)
+      return {
+        logicalName: entity,
+        entitySetName: `${entity}s`,
+        attributes: [{ logicalName: 'name', attributeType: 'String' }],
+      }
+    })
+    mockQuery.mockResolvedValue([{ accountid: '00000000-0000-0000-0000-000000000001', name: 'Test' }])
+
+    await demo({ tier: 'read' })
+
+    expect(mockListEntities).toHaveBeenCalled()
+  })
+
   it('summary table is printed to stdout', async () => {
     setupMocks()
     mockQuery.mockResolvedValue([{ accountid: '00000000-0000-0000-0000-000000000001', name: 'Test' }])
