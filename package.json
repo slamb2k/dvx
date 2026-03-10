@@ -1,6 +1,6 @@
 {
-  "name": "dvx-cli",
-  "version": "1.0.6",
+  "name": "@slamb2k/dvx",
+  "version": "1.0.7",
   "description": "Agent-first CLI and MCP server for Microsoft Dataverse CE/Sales/Service",
   "type": "module",
   "bin": {
