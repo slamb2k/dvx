@@ -202,6 +202,8 @@ dvx action <name> [--entity <entity>] [--id <guid>] [--json '<payload>']
 dvx batch --file <path> [--atomic] [--dry-run]
 
 dvx mcp [--entities <e1,e2>] [--port <n>]
+
+dvx demo [--tier read|write|full]
 ```
 
 ### Dataverse Web API Endpoints Used
