@@ -17,17 +17,14 @@ vi.mock('../../client/create-client.js', () => ({
   }),
 }))
 
-vi.mock('../../utils/cli.js', () => ({
-  isInteractive: mockIsInteractive,
-  promptConfirmClack: mockPromptConfirmClack,
-  createSpinner: () => ({ start() {}, stop() {}, message() {}, error() {} }),
-  logMutationSuccess: vi.fn(),
-  logSuccess: vi.fn(),
-  logError: vi.fn(),
-  logInfo: vi.fn(),
-  logWarn: vi.fn(),
-  logStep: vi.fn(),
-}))
+vi.mock('../../utils/cli.js', async () => {
+  const { createCliMock } = await import('../../__tests__/helpers/cli-mock.js')
+  return {
+    ...createCliMock(),
+    isInteractive: mockIsInteractive,
+    promptConfirmClack: mockPromptConfirmClack,
+  }
+})
 
 describe('deleteRecord', () => {
   const validId = '00000000-0000-0000-0000-000000000001'

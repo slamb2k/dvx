@@ -12,16 +12,10 @@ vi.mock('../../client/create-client.js', () => ({
   }),
 }))
 
-vi.mock('../../utils/cli.js', () => ({
-  createSpinner: () => ({ start() {}, stop() {}, message() {}, error() {} }),
-  isInteractive: () => false,
-  logSuccess: vi.fn(),
-  logError: vi.fn(),
-  logInfo: vi.fn(),
-  logWarn: vi.fn(),
-  logStep: vi.fn(),
-  logMutationSuccess: vi.fn(),
-}))
+vi.mock('../../utils/cli.js', async () => {
+  const { createCliMock } = await import('../../__tests__/helpers/cli-mock.js')
+  return createCliMock()
+})
 
 describe('query', () => {
   beforeEach(() => {
@@ -42,8 +36,11 @@ describe('query', () => {
   it('streams ndjson records — one JSON line per record', async () => {
     // In ndjson mode, query() calls client.query with an onRecord callback instead of returning an array
     mockQuery.mockImplementation(async (_entity: string, _odata: string, opts: { onRecord?: (r: unknown) => void }) => {
+      await Promise.resolve()
       opts.onRecord?.({ accountid: '1', name: 'Acme' })
+      await Promise.resolve()
       opts.onRecord?.({ accountid: '2', name: 'Globex' })
+      return []
     })
 
     await query({ odata: 'accounts', output: 'ndjson', pageAll: false })

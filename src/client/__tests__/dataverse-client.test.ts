@@ -4,17 +4,10 @@ import { AuthManager } from '../../auth/auth-manager.js'
 
 vi.mock('../../auth/auth-manager.js')
 
-vi.mock('../../utils/cli.js', () => ({
-  logDryRun: vi.fn(),
-  isInteractive: () => false,
-  createSpinner: () => ({ start() {}, stop() {}, message() {}, error() {} }),
-  logSuccess: vi.fn(),
-  logError: vi.fn(),
-  logInfo: vi.fn(),
-  logWarn: vi.fn(),
-  logStep: vi.fn(),
-  logMutationSuccess: vi.fn(),
-}))
+vi.mock('../../utils/cli.js', async () => {
+  const { createCliMock } = await import('../../__tests__/helpers/cli-mock.js')
+  return createCliMock()
+})
 
 function createMockAuthManager(): AuthManager {
   const mock = new AuthManager()
