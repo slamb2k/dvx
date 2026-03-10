@@ -4,6 +4,18 @@ import { AuthManager } from '../../auth/auth-manager.js'
 
 vi.mock('../../auth/auth-manager.js')
 
+vi.mock('../../utils/cli.js', () => ({
+  logDryRun: vi.fn(),
+  isInteractive: () => false,
+  createSpinner: () => ({ start() {}, stop() {}, message() {}, error() {} }),
+  logSuccess: vi.fn(),
+  logError: vi.fn(),
+  logInfo: vi.fn(),
+  logWarn: vi.fn(),
+  logStep: vi.fn(),
+  logMutationSuccess: vi.fn(),
+}))
+
 function createMockAuthManager(): AuthManager {
   const mock = new AuthManager()
   vi.spyOn(mock, 'getActiveProfile').mockReturnValue({

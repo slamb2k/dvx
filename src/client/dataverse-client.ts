@@ -5,6 +5,7 @@ import { ISchemaCache, SchemaCache, EntitySchemaCacheEntry, AttributeDefinition 
 import { withRetry } from '../utils/retry.js'
 import { validateEntityName, validateGuid, validateActionName } from '../utils/validation.js'
 import { injectPagingCookie } from '../utils/fetchxml.js'
+import { logDryRun } from '../utils/cli.js'
 
 const ODataResponseSchema = z.object({
   value: z.array(z.record(z.string(), z.unknown())),
@@ -45,6 +46,8 @@ interface QueryOptions {
   pageAll?: boolean | undefined
   maxRows?: number | undefined
   onRecord?: ((record: Record<string, unknown>) => void) | undefined
+  onProgress?: ((info: { recordCount: number; pageNumber: number }) => void) | undefined
+  onRetry?: ((attempt: number, delayMs: number, error: import('../errors.js').DataverseError) => void) | undefined
 }
 
 export class DataverseClient {
@@ -199,8 +202,11 @@ export class DataverseClient {
       if (separator) url += separator
     }
 
+    let pageNumber = 0
+
     do {
-      const response = await withRetry(() => this.request(url))
+      const retryOpts = options.onRetry ? { onRetry: options.onRetry } : {}
+      const response = await withRetry(() => this.request(url), retryOpts)
       const json = await response.json()
       const parsed = ODataResponseSchema.parse(json)
 
@@ -214,6 +220,9 @@ export class DataverseClient {
           records.push(record)
         }
       }
+
+      pageNumber++
+      options.onProgress?.({ recordCount: totalRecords, pageNumber })
 
       if (totalRecords >= maxRows) break
       url = parsed['@odata.nextLink'] ?? ''
@@ -260,8 +269,7 @@ export class DataverseClient {
     const url = `${baseUrl}/${schema.entitySetName}`
 
     if (this.dryRun) {
-      console.error(`[DRY RUN] POST ${url}`)
-      console.error(`[DRY RUN] Body: ${JSON.stringify(data)}`)
+      logDryRun('POST', url, data)
       return 'dry-run'
     }
 
@@ -287,8 +295,7 @@ export class DataverseClient {
     const url = `${baseUrl}/${schema.entitySetName}(${guid})`
 
     if (this.dryRun) {
-      console.error(`[DRY RUN] PATCH ${url}`)
-      console.error(`[DRY RUN] Body: ${JSON.stringify(data)}`)
+      logDryRun('PATCH', url, data)
       return
     }
 
@@ -307,7 +314,7 @@ export class DataverseClient {
     const url = `${baseUrl}/${schema.entitySetName}(${guid})`
 
     if (this.dryRun) {
-      console.error(`[DRY RUN] DELETE ${url}`)
+      logDryRun('DELETE', url)
       return
     }
 
@@ -318,6 +325,7 @@ export class DataverseClient {
     entityName: string,
     fetchXml: string,
     onRecord?: (record: unknown) => void,
+    options?: { onProgress?: (info: { recordCount: number; pageNumber: number }) => void; onRetry?: (attempt: number, delayMs: number, error: import('../errors.js').DataverseError) => void },
   ): Promise<unknown[]> {
     const name = validateEntityName(entityName)
     const schema = await this.getEntitySchema(name)
@@ -332,7 +340,8 @@ export class DataverseClient {
       const encoded = encodeURIComponent(currentXml)
       const url = `${baseUrl}/${schema.entitySetName}?fetchXml=${encoded}`
 
-      const response = await withRetry(() => this.request(url))
+      const fetchRetryOpts = options?.onRetry ? { onRetry: options.onRetry } : {}
+      const response = await withRetry(() => this.request(url), fetchRetryOpts)
       const json = await response.json() as Record<string, unknown>
       const parsed = ODataResponseSchema.parse(json)
 
@@ -346,6 +355,8 @@ export class DataverseClient {
           records.push(record)
         }
       }
+
+      options?.onProgress?.({ recordCount: totalRecords, pageNumber: page })
 
       if (totalRecords >= maxRows) break
 
@@ -377,8 +388,7 @@ export class DataverseClient {
     }
 
     if (this.dryRun) {
-      console.error('[DRY RUN] POST', url)
-      console.error('[DRY RUN] Body:', JSON.stringify(payload, null, 2))
+      logDryRun('POST', url, payload)
       return null
     }
 
@@ -414,8 +424,7 @@ export class DataverseClient {
     const url = `${baseUrl}/$batch`
 
     if (this.dryRun) {
-      console.error(`[DRY RUN] POST ${url}`)
-      console.error(`[DRY RUN] Batch body length: ${body.length}`)
+      logDryRun('POST', url, { batchBodyLength: body.length })
       return ''
     }
 
