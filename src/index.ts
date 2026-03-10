@@ -14,6 +14,7 @@ import { batch } from './commands/batch.js'
 import { actionCommand } from './commands/action.js'
 import { completion } from './commands/completion.js'
 import { createRequire } from 'node:module'
+import { setUxOptions, logError, logInfo, stripAnsi } from './utils/cli.js'
 
 const require = createRequire(import.meta.url)
 const { version } = require('../package.json') as { version: string }
@@ -34,10 +35,23 @@ program
   .name('dvx')
   .description('Agent-first CLI for Microsoft Dataverse CE/Sales/Service')
   .version(version)
-  .addHelpText('before', BANNER)
+  .option('--no-color', 'Disable color output')
+  .option('--quiet', 'Suppress all progress output')
+  .addHelpText('before', () => {
+    const opts = program.opts()
+    return opts.color === false ? stripAnsi(BANNER) : BANNER
+  })
   .action(() => {
     program.outputHelp()
   })
+
+program.hook('preAction', (thisCommand) => {
+  const opts = thisCommand.optsWithGlobals()
+  setUxOptions({
+    quiet: opts.quiet ?? false,
+    noColor: opts.color === false,
+  })
+})
 
 // Auth commands
 const auth = program.command('auth').description('Manage authentication profiles')
@@ -330,10 +344,10 @@ async function main(): Promise<void> {
     await program.parseAsync(process.argv)
   } catch (error) {
     if (error instanceof Error) {
-      console.error(`Error: ${error.message}`)
+      logError(error.message)
       const hint = getHint(error, process.argv)
       if (hint) {
-        console.error(`Hint: ${hint}`)
+        logInfo(hint)
       }
       if (process.env['DVX_DEBUG'] === 'true') {
         console.error(error.stack)
