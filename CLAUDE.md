@@ -14,7 +14,8 @@ Read `SPEC.md` for the full implementation specification. It is the source of tr
 - pnpm (package manager)
 - `@modelcontextprotocol/sdk` (MCP stdio server)
 - `@azure/msal-node` (auth — both client credentials and PKCE)
-- `@microsoft/microsoft-graph-client` (Graph API integration)
+- `@microsoft/microsoft-graph-client` (Graph API for app provisioning)
+- `@clack/prompts` (interactive CLI prompts — select, text, spinner)
 - `better-sqlite3` (SQLite schema cache)
 - `commander` (CLI framework)
 - `fast-xml-parser` (FetchXML parsing)
@@ -32,6 +33,7 @@ Read `SPEC.md` for the full implementation specification. It is the source of tr
 - Meta-tools (`discover_entity`, `list_entities`, `execute_query`, `execute_action`, `batch_execute`) are always registered in MCP, regardless of `--entities` scope.
 - `--dry-run` must be implemented on ALL mutating operations before those operations ship.
 - Secrets (client secrets, tokens) are never written to config files. OS keychain or env vars only.
+- Contextual error hints via `getHint()` in `src/index.ts` — all CLI errors pass through this for agent/human-friendly guidance.
 
 ## Code Conventions
 
@@ -44,6 +46,8 @@ Read `SPEC.md` for the full implementation specification. It is the source of tr
 - `skills/` — domain-specific SKILL.md files for agent instruction:
   `dvx-auth/`, `dvx-batch/`, `dvx-dataverse-gotchas/`, `dvx-field-service/`,
   `dvx-sales/`, `dvx-schema/`, `dvx-service/`
+- `deploy/` — Azure Container Apps IaC (Bicep) and environment matrix
+- `docs/` — comparison docs, reference material
 - Tests in `__tests__/` adjacent to source files
 
 ## Patterns to Follow
@@ -89,9 +93,10 @@ DVX_DEBUG=true                   # verbose HTTP logging
 
 ## Current Phase
 
-Phases 1–5 are **complete**. See `SPEC.md` for full details.
+Phases 1–6 are **complete**. See `SPEC.md` for full details.
 
-**Phase 6** is next — `dvx init` Graph API bootstrapper. See `goals/phase6-init-graph.md`.
+Phase 6 (`dvx init` → `dvx auth login` refactor) is merged. Auth commands now follow
+Microsoft CLI conventions with auto-discovery and Graph API app provisioning.
 
 ## Operating Framework: GOTCHA
 
