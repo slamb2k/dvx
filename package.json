@@ -1,5 +1,5 @@
 {
-  "name": "dvx",
+  "name": "dvx-cli",
   "version": "0.1.0",
   "description": "Agent-first CLI and MCP server for Microsoft Dataverse CE/Sales/Service",
   "type": "module",
@@ -20,7 +20,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "tsc --noEmit",
     "prepublishOnly": "pnpm build && pnpm test",
-    "postinstall": "node -e \"console.error('\\n  dvx installed. Run: dvx auth create --help\\n')\""
+    "postinstall": "node -e \"console.error('\\n  dvx installed. Run: dvx auth login --help\\n')\""
   },
   "engines": {
     "node": ">=18"
