@@ -87,6 +87,7 @@ auth
 
 auth
   .command('list')
+  .alias('status')
   .description('List all authentication profiles')
   .addOption(new Option('--output <format>', 'Output format').choices(['json', 'table']).default('table'))
   .action(async (opts) => {
@@ -248,8 +249,9 @@ program
   .command('demo')
   .description('Run interactive demo showcasing dvx capabilities')
   .addOption(new Option('--tier <tier>', 'Demo depth tier').choices(['read', 'write', 'full']))
+  .addOption(new Option('--output <format>', 'Output format').choices(['json', 'table']).default('table'))
   .action(async (opts) => {
-    await demo({ tier: opts.tier })
+    await demo({ tier: opts.tier, output: opts.output })
   })
 
 // MCP server
@@ -349,21 +351,42 @@ function getHint(error: Error, argv: string[]): string | undefined {
   return undefined
 }
 
+function getOutputFormat(argv: string[]): string | undefined {
+  const idx = argv.indexOf('--output')
+  return idx >= 0 ? argv[idx + 1] : undefined
+}
+
 async function main(): Promise<void> {
   try {
     await program.parseAsync(process.argv)
   } catch (error) {
+    const outputFormat = getOutputFormat(process.argv)
+
     if (error instanceof Error) {
-      logError(error.message)
-      const hint = getHint(error, process.argv)
-      if (hint) {
-        logInfo(hint)
+      if (outputFormat === 'json') {
+        const hint = getHint(error, process.argv)
+        const payload: Record<string, string> = {
+          error: error.message,
+          code: error.name,
+        }
+        if (hint) payload['hint'] = hint
+        console.log(JSON.stringify(payload))
+      } else {
+        logError(error.message)
+        const hint = getHint(error, process.argv)
+        if (hint) {
+          logInfo(hint)
+        }
       }
       if (process.env['DVX_DEBUG'] === 'true') {
         console.error(error.stack)
       }
     } else {
-      console.error('Unknown error:', error)
+      if (outputFormat === 'json') {
+        console.log(JSON.stringify({ error: String(error), code: 'UnknownError' }))
+      } else {
+        console.error('Unknown error:', error)
+      }
     }
     process.exit(1)
   }

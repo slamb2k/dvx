@@ -75,4 +75,18 @@ describe('deleteRecord', () => {
     await expect(deleteRecord('account', validId, { confirm: true, dryRun: false }))
       .rejects.toThrow('Record not found')
   })
+
+  it('throws on invalid entity name', async () => {
+    await expect(deleteRecord('ac count', validId, { confirm: true, dryRun: false }))
+      .rejects.toThrow('Invalid entity logical name')
+  })
+
+  it('outputs json format', async () => {
+    mockDeleteRecord.mockResolvedValue(undefined)
+
+    await deleteRecord('account', validId, { confirm: true, dryRun: false, output: 'json' })
+
+    const calls = vi.mocked(console.log).mock.calls.map((c) => c[0] as string)
+    expect(JSON.parse(calls[0]!)).toEqual({ ok: true })
+  })
 })

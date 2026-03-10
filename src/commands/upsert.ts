@@ -1,6 +1,7 @@
 import { createClient } from '../client/create-client.js'
 import { ValidationError } from '../errors.js'
 import { parseJsonPayload } from '../utils/parse-json.js'
+import { validateEntityName } from '../utils/validation.js'
 import { formatMutationResult } from '../utils/output.js'
 import { BaseMutationOptions } from './types.js'
 import { createSpinner, logMutationSuccess } from '../utils/cli.js'
@@ -11,6 +12,7 @@ interface UpsertOptions extends BaseMutationOptions {
 }
 
 export async function upsertRecord(entityName: string, options: UpsertOptions): Promise<void> {
+  validateEntityName(entityName)
   const { client } = await createClient({ dryRun: options.dryRun, callerObjectId: options.callerObjectId })
 
   const data = parseJsonPayload(options.json)

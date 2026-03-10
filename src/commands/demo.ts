@@ -10,6 +10,7 @@ type DemoTier = 'read' | 'write' | 'full'
 
 interface DemoOptions {
   tier?: DemoTier | undefined
+  output?: 'json' | 'table' | undefined
 }
 
 interface DemoResult {
@@ -379,9 +380,20 @@ export async function demo(options: DemoOptions): Promise<void> {
   }
 
   const totalMs = Math.round(performance.now() - totalStart)
-  renderSummary(results)
-
   const passed = results.filter((r) => r.status === 'pass').length
+
+  if (options.output === 'json') {
+    console.log(JSON.stringify({
+      tier: selectedTier,
+      totalMs,
+      passed,
+      total: results.length,
+      results: results.map((r) => ({ name: r.name, status: r.status, elapsedMs: r.elapsedMs, ...(r.error ? { error: r.error } : {}) })),
+    }, null, 2))
+  } else {
+    renderSummary(results)
+  }
+
   if (isInteractive()) {
     clack.outro(`${passed}/${results.length} demos passed in ${totalMs}ms`)
   }

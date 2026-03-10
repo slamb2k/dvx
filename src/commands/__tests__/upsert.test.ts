@@ -61,4 +61,19 @@ describe('upsertRecord', () => {
     const calls = vi.mocked(console.log).mock.calls.map((c) => c[0])
     expect(JSON.parse(calls[0] as string)).toEqual({ action: 'updated', id: '00000000-0000-0000-0000-000000000002' })
   })
+
+  it('throws on invalid entity name', async () => {
+    await expect(upsertRecord('ac count', { matchField: 'name', json: '{"name":"Acme"}', dryRun: false }))
+      .rejects.toThrow('Invalid entity logical name')
+  })
+
+  it('outputs table format on create', async () => {
+    mockQuery.mockResolvedValue([])
+    mockCreateRecord.mockResolvedValue('00000000-0000-0000-0000-000000000001')
+
+    await upsertRecord('account', { matchField: 'name', json: '{"name":"Acme"}', dryRun: false, output: 'table' })
+
+    const calls = vi.mocked(console.log).mock.calls.map((c) => c[0] as string)
+    expect(calls.some((c) => c.includes('created'))).toBe(true)
+  })
 })

@@ -40,7 +40,7 @@ graph TD
 **Auth Layer**
 - Pattern 1 (default): Service principal via client credentials flow (`/.default` scope)
   - App registration + application user in Dataverse + security roles
-  - `dvx auth create --service-principal` — stores credentials in env vars or local config
+  - `dvx auth login --service-principal` — stores credentials in env vars or local config
 - Pattern 2 (interactive): Delegated PKCE, `az login` style
   - `dvx auth login` — browser pop, token cached with refresh
   - Use when audit trail under named identity required AND official MCP server can't run the query
@@ -179,9 +179,9 @@ interface GeneratedMcpTool {
 ### CLI Commands
 
 ```
-dvx auth create [--service-principal] [--name <profile>]
-dvx auth login [--name <profile>]
-dvx auth list
+dvx auth login [--service-principal] [--name <profile>] [--url <url>] [--client-id <id>]
+dvx auth logout [--all]
+dvx auth list [--output json|table]
 dvx auth select <profile>
 
 dvx entities [--output json|table]
@@ -342,7 +342,7 @@ Each SKILL.md includes:
 
 ### Phase 1: Auth + Schema Discovery + Basic Query
 **Deliverables:**
-- `dvx auth create --service-principal` — stores profile, validates connection
+- `dvx auth login --service-principal` — stores profile, validates connection
 - `dvx entities` — returns entity name list from EntityDefinitions
 - `dvx schema <entity>` — returns field-masked entity schema as JSON
 - `dvx query --odata '<expr>'` — OData passthrough, single page

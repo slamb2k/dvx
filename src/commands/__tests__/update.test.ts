@@ -45,4 +45,19 @@ describe('updateRecord', () => {
     await expect(updateRecord('account', 'bad-id', { json: '{"name":"x"}', dryRun: false }))
       .rejects.toThrow('Invalid GUID')
   })
+
+  it('throws on invalid entity name', async () => {
+    const validId = '00000000-0000-0000-0000-000000000001'
+    await expect(updateRecord('ac count', validId, { json: '{"name":"x"}', dryRun: false }))
+      .rejects.toThrow('Invalid entity logical name')
+  })
+
+  it('outputs json format', async () => {
+    mockUpdateRecord.mockResolvedValue(undefined)
+
+    await updateRecord('account', validId, { json: '{"name":"Updated"}', dryRun: false, output: 'json' })
+
+    const calls = vi.mocked(console.log).mock.calls.map((c) => c[0] as string)
+    expect(JSON.parse(calls[0]!)).toEqual({ ok: true })
+  })
 })

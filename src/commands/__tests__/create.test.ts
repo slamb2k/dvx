@@ -56,4 +56,18 @@ describe('createRecord', () => {
     await expect(createRecord('account', { json: '{bad', dryRun: false }))
       .rejects.toThrow('Invalid JSON payload')
   })
+
+  it('throws on invalid entity name', async () => {
+    await expect(createRecord('ac count', { json: '{"name":"Acme"}', dryRun: false }))
+      .rejects.toThrow('Invalid entity logical name')
+  })
+
+  it('outputs table format with ok and id', async () => {
+    mockCreateRecord.mockResolvedValue('00000000-0000-0000-0000-000000000001')
+
+    await createRecord('account', { json: '{"name":"Acme"}', dryRun: false, output: 'table' })
+
+    const calls = vi.mocked(console.log).mock.calls.map((c) => c[0] as string)
+    expect(calls.some((c) => c.includes('ok'))).toBe(true)
+  })
 })

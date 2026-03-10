@@ -1,5 +1,5 @@
 import { createClient } from '../client/create-client.js'
-import { validateGuid } from '../utils/validation.js'
+import { validateEntityName, validateGuid } from '../utils/validation.js'
 import { renderTable } from '../utils/table.js'
 import { createSpinner } from '../utils/cli.js'
 
@@ -9,6 +9,7 @@ interface GetOptions {
 }
 
 export async function get(entityName: string, id: string, options: GetOptions): Promise<void> {
+  validateEntityName(entityName)
   const validatedId = validateGuid(id)
   const { client } = await createClient()
 
