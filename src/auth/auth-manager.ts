@@ -86,6 +86,24 @@ export class AuthManager {
     this.saveConfig()
   }
 
+  deleteProfile(name: string): void {
+    if (!this.config.profiles[name]) {
+      throw new AuthProfileNotFoundError(name)
+    }
+    delete this.config.profiles[name]
+    if (this.config.activeProfile === name) {
+      const remaining = Object.keys(this.config.profiles)
+      this.config.activeProfile = remaining.length > 0 ? remaining[0] : undefined
+    }
+    this.saveConfig()
+  }
+
+  deleteAllProfiles(): void {
+    this.config.profiles = {}
+    this.config.activeProfile = undefined
+    this.saveConfig()
+  }
+
   private saveProfile(profile: AuthProfile): void {
     this.config.profiles[profile.name] = profile
     this.saveConfig()

@@ -6,7 +6,9 @@
   "bin": {
     "dvx": "./dist/index.js"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "publishConfig": {
     "access": "public"
   },
@@ -39,6 +41,7 @@
   },
   "dependencies": {
     "@azure/msal-node": "^2.16.0",
+    "@clack/prompts": "^1.1.0",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@modelcontextprotocol/sdk": "^1.0.0",
     "better-sqlite3": "^12.6.2",

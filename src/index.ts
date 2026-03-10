@@ -1,8 +1,7 @@
 import { Command, Option } from 'commander'
-import { authCreate } from './commands/auth-create.js'
+import { authLogin, authLogout } from './commands/auth-login.js'
 import { authList } from './commands/auth-list.js'
 import { authSelect } from './commands/auth-select.js'
-import { authLogin } from './commands/auth-login.js'
 import { entities } from './commands/entities.js'
 import { schema } from './commands/schema.js'
 import { query } from './commands/query.js'
@@ -13,36 +12,63 @@ import { upsertRecord } from './commands/upsert.js'
 import { deleteRecord } from './commands/delete.js'
 import { batch } from './commands/batch.js'
 import { actionCommand } from './commands/action.js'
-import { init } from './commands/init.js'
 import { completion } from './commands/completion.js'
+import { createRequire } from 'node:module'
+
+const require = createRequire(import.meta.url)
+const { version } = require('../package.json') as { version: string }
+
+const BANNER = `
+\x1b[36m{_____    {__         {__\x1b[0m\x1b[33m{__      {__\x1b[0m
+\x1b[36m{__   {__  {__       {__  \x1b[0m\x1b[33m{__   {__\x1b[0m
+\x1b[36m{__    {__  {__     {__    \x1b[0m\x1b[33m{__ {__\x1b[0m
+\x1b[36m{__    {__   {__   {__     \x1b[0m\x1b[33m  {__\x1b[0m
+\x1b[36m{__    {__    {__ {__      \x1b[0m\x1b[33m{__ {__\x1b[0m        \x1b[2mAgent-first CLI/MCP for\x1b[0m
+\x1b[36m{__   {__      {____      \x1b[0m\x1b[33m{__   {__\x1b[0m       \x1b[2mMicrosoft Dataverse\x1b[0m
+\x1b[36m{_____          {__      \x1b[0m\x1b[33m{__      {__\x1b[0m     \x1b[2mv${version}\x1b[0m
+`
 
 const program = new Command()
 
 program
   .name('dvx')
   .description('Agent-first CLI for Microsoft Dataverse CE/Sales/Service')
-  .version('0.1.0')
+  .version(version)
+  .addHelpText('before', BANNER)
+  .action(() => {
+    console.log(BANNER)
+    program.outputHelp()
+  })
 
 // Auth commands
 const auth = program.command('auth').description('Manage authentication profiles')
 
 auth
-  .command('create')
-  .description('Create a new authentication profile')
-  .option('--service-principal', 'Use service principal authentication', true)
+  .command('login')
+  .description('Sign in to a Dataverse environment')
   .option('--name <name>', 'Profile name', 'default')
-  .requiredOption('--environment-url <url>', 'Dataverse environment URL (e.g., https://org.crm.dynamics.com)')
-  .requiredOption('--tenant-id <id>', 'Entra ID tenant ID')
-  .requiredOption('--client-id <id>', 'App registration client ID')
+  .option('--url <url>', 'Dataverse environment URL (auto-discovered if omitted)')
+  .option('--tenant-id <id>', 'Entra tenant ID (auto-detected from sign-in if omitted)')
+  .option('--client-id <id>', 'App registration client ID (auto-created if omitted)')
+  .option('--service-principal', 'Use service principal (client credentials) auth')
   .option('--client-secret <secret>', 'Client secret (prefer DATAVERSE_CLIENT_SECRET env var)')
   .action(async (opts) => {
-    await authCreate({
+    await authLogin({
       name: opts.name,
-      environmentUrl: opts.environmentUrl,
+      url: opts.url,
       tenantId: opts.tenantId,
       clientId: opts.clientId,
       clientSecret: opts.clientSecret,
+      servicePrincipal: opts.servicePrincipal,
     })
+  })
+
+auth
+  .command('logout')
+  .description('Remove auth profile')
+  .option('--all', 'Remove all profiles')
+  .action(async (opts) => {
+    await authLogout({ all: opts.all })
   })
 
 auth
@@ -59,17 +85,6 @@ auth
   .argument('<profile>', 'Profile name to activate')
   .action(async (profileName) => {
     await authSelect(profileName)
-  })
-
-auth
-  .command('login')
-  .description('Sign in with delegated (user) credentials via browser')
-  .option('--name <name>', 'Profile name', 'default')
-  .requiredOption('--environment-url <url>', 'Dataverse environment URL')
-  .requiredOption('--tenant-id <id>', 'Entra tenant ID')
-  .requiredOption('--client-id <id>', 'App registration client ID')
-  .action(async (opts) => {
-    await authLogin({ name: opts.name, environmentUrl: opts.environmentUrl, tenantId: opts.tenantId, clientId: opts.clientId })
   })
 
 // Entity list
@@ -230,14 +245,6 @@ program
     })
   })
 
-// Init wizard
-program
-  .command('init')
-  .description('Interactive setup wizard for dvx')
-  .action(async () => {
-    await init()
-  })
-
 // Shell completion
 program
   .command('completion')
@@ -247,12 +254,88 @@ program
     completion(shell as 'bash' | 'zsh' | 'powershell')
   })
 
+function getHint(error: Error, argv: string[]): string | undefined {
+  const msg = error.message
+  const args = argv.join(' ')
+
+  // Shell expansion of $variables in OData queries
+  if (msg.includes('Bad Request') && args.includes('--odata')) {
+    const odataArg = argv[argv.indexOf('--odata') + 1] ?? ''
+    if (odataArg.includes('?=') || odataArg.includes('&=') || !odataArg.includes('$')) {
+      return "Use single quotes to prevent shell expansion of $ in OData: --odata '/entities?$top=10'"
+    }
+  }
+
+  // No auth profile configured
+  if (error.name === 'AuthProfileNotFoundError') {
+    return 'Run `dvx auth login` to set up authentication.'
+  }
+
+  // Profile already exists
+  if (error.name === 'AuthProfileExistsError') {
+    return 'Use `dvx auth select <name>` to switch profiles, or `dvx auth logout` to remove the existing one.'
+  }
+
+  // Token acquisition failure
+  if (error.name === 'TokenAcquisitionError' && msg.includes('Client secret not found')) {
+    return 'Set DATAVERSE_CLIENT_SECRET env var, or use `dvx auth login` for delegated (browser) auth.'
+  }
+
+  // Entity not found
+  if (error.name === 'EntityNotFoundError') {
+    return 'Run `dvx entities` to list available entities. Entity names are singular (e.g., "account" not "accounts").'
+  }
+
+  // Record not found (bad GUID)
+  if (error.name === 'RecordNotFoundError') {
+    return 'Verify the record ID is correct. Use `dvx query` to search for records.'
+  }
+
+  // GUID validation
+  if (error.name === 'ValidationError' && msg.includes('GUID')) {
+    return 'GUIDs must be in format: 00000000-0000-0000-0000-000000000000'
+  }
+
+  // Impersonation
+  if (error.name === 'ImpersonationPrivilegeError') {
+    return 'The application user needs the prvActOnBehalfOfAnotherUser privilege. Assign it via a security role in Dataverse admin.'
+  }
+
+  // FetchXML parsing
+  if (error.name === 'FetchXmlValidationError') {
+    return 'Wrap FetchXML in single quotes to prevent shell interpretation of < and > characters.'
+  }
+
+  // HTTP 401
+  if (error.name === 'DataverseError' && msg.includes('401')) {
+    return 'Authentication expired or invalid. Run `dvx auth login` to re-authenticate.'
+  }
+
+  // HTTP 403
+  if (error.name === 'DataverseError' && msg.includes('403')) {
+    return 'Check that the authenticated user/app has the required security role in Dataverse.'
+  }
+
+  // JSON parse errors in --json flag
+  if (msg.includes('JSON') || msg.includes('Unexpected token')) {
+    if (args.includes('--json')) {
+      return "Ensure --json value is valid JSON. Use single quotes around the value: --json '{\"name\": \"value\"}'"
+    }
+  }
+
+  return undefined
+}
+
 async function main(): Promise<void> {
   try {
     await program.parseAsync(process.argv)
   } catch (error) {
     if (error instanceof Error) {
       console.error(`Error: ${error.message}`)
+      const hint = getHint(error, process.argv)
+      if (hint) {
+        console.error(`Hint: ${hint}`)
+      }
       if (process.env['DVX_DEBUG'] === 'true') {
         console.error(error.stack)
       }
