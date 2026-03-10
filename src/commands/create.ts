@@ -1,5 +1,6 @@
 import { createClient } from '../client/create-client.js'
 import { parseJsonPayload } from '../utils/parse-json.js'
+import { validateEntityName } from '../utils/validation.js'
 import { formatMutationResult } from '../utils/output.js'
 import { BaseMutationOptions } from './types.js'
 import { createSpinner, logMutationSuccess } from '../utils/cli.js'
@@ -9,6 +10,7 @@ interface CreateOptions extends BaseMutationOptions {
 }
 
 export async function createRecord(entityName: string, options: CreateOptions): Promise<void> {
+  validateEntityName(entityName)
   const { client } = await createClient({ dryRun: options.dryRun, callerObjectId: options.callerObjectId })
 
   const data = parseJsonPayload(options.json)

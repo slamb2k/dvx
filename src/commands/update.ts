@@ -1,6 +1,6 @@
 import { createClient } from '../client/create-client.js'
 import { parseJsonPayload } from '../utils/parse-json.js'
-import { validateGuid } from '../utils/validation.js'
+import { validateEntityName, validateGuid } from '../utils/validation.js'
 import { formatMutationResult } from '../utils/output.js'
 import { BaseMutationOptions } from './types.js'
 import { createSpinner, logMutationSuccess } from '../utils/cli.js'
@@ -10,6 +10,7 @@ interface UpdateOptions extends BaseMutationOptions {
 }
 
 export async function updateRecord(entityName: string, id: string, options: UpdateOptions): Promise<void> {
+  validateEntityName(entityName)
   validateGuid(id)
   const { client } = await createClient({ dryRun: options.dryRun, callerObjectId: options.callerObjectId })
 

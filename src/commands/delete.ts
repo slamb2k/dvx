@@ -1,5 +1,5 @@
 import { createClient } from '../client/create-client.js'
-import { validateGuid } from '../utils/validation.js'
+import { validateEntityName, validateGuid } from '../utils/validation.js'
 import { formatMutationResult } from '../utils/output.js'
 import { ValidationError } from '../errors.js'
 import { BaseMutationOptions } from './types.js'
@@ -10,6 +10,7 @@ interface DeleteOptions extends BaseMutationOptions {
 }
 
 export async function deleteRecord(entityName: string, id: string, options: DeleteOptions): Promise<void> {
+  validateEntityName(entityName)
   validateGuid(id)
 
   if (!options.confirm && !options.dryRun) {
