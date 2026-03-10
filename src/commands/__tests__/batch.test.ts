@@ -12,16 +12,10 @@ vi.mock('../../client/create-client.js', () => ({
   }),
 }))
 
-vi.mock('../../utils/cli.js', () => ({
-  createSpinner: () => ({ start() {}, stop() {}, message() {}, error() {} }),
-  logSuccess: vi.fn(),
-  logError: vi.fn(),
-  logInfo: vi.fn(),
-  logWarn: vi.fn(),
-  logStep: vi.fn(),
-  logMutationSuccess: vi.fn(),
-  isInteractive: () => false,
-}))
+vi.mock('../../utils/cli.js', async () => {
+  const { createCliMock } = await import('../../__tests__/helpers/cli-mock.js')
+  return createCliMock()
+})
 
 vi.mock('node:fs/promises', () => ({
   readFile: vi.fn(),

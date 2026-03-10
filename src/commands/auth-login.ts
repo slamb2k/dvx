@@ -7,7 +7,7 @@ import { MsalCachePlugin } from '../auth/msal-cache-plugin.js'
 import { createClient } from '../client/create-client.js'
 import { openBrowser } from '../utils/browser.js'
 import { validateUrl } from '../utils/validation.js'
-import { promptUrl, createSpinner } from '../utils/cli.js'
+import { promptUrl, createSpinner, logStep, logSuccess, logWarn, logInfo, isInteractive } from '../utils/cli.js'
 import * as path from 'node:path'
 
 // Well-known dvx bootstrapper app — multi-tenant, delegated Application.ReadWrite.All + CRM
@@ -229,7 +229,7 @@ async function provisionViaGraph(pca: PublicClientApplication): Promise<string> 
   })
 
   // 1. Create app registration with redirect URI for PKCE
-  clack.log.step('Creating app registration "dvx-service"...')
+  logStep('Creating app registration "dvx-service"...')
   const app = await graphClient.api('/applications').post({
     displayName: 'dvx-service',
     signInAudience: 'AzureADMyOrg',
@@ -246,17 +246,17 @@ async function provisionViaGraph(pca: PublicClientApplication): Promise<string> 
     ],
   }) as { appId: string; id: string }
 
-  clack.log.success(`App created: ${app.appId}`)
+  logSuccess(`App created: ${app.appId}`)
 
   // 2. Create service principal
-  clack.log.step('Creating service principal...')
+  logStep('Creating service principal...')
   await graphClient.api('/servicePrincipals').post({
     appId: app.appId,
   })
-  clack.log.success('Service principal created')
+  logSuccess('Service principal created')
 
   // 3. Grant admin consent for Dynamics CRM user_impersonation
-  clack.log.step('Granting admin consent for Dataverse access...')
+  logStep('Granting admin consent for Dataverse access...')
   try {
     const crmSp = await graphClient.api('/servicePrincipals')
       .filter("appId eq '00000007-0000-0000-c000-000000000000'")
@@ -275,10 +275,10 @@ async function provisionViaGraph(pca: PublicClientApplication): Promise<string> 
         resourceId: crmSp.value[0].id,
         scope: 'user_impersonation',
       })
-      clack.log.success('Admin consent granted')
+      logSuccess('Admin consent granted')
     }
   } catch {
-    clack.log.warn('Could not auto-grant consent (may require Global Admin). Users will be prompted on first login.')
+    logWarn('Could not auto-grant consent (may require Global Admin). Users will be prompted on first login.')
   }
 
   return app.appId
@@ -333,7 +333,7 @@ export async function authLogin(options: AuthLoginOptions): Promise<void> {
 
   // ── Delegated flow ──────────────────────────────────────────
 
-  clack.intro('dvx auth login')
+  if (isInteractive()) clack.intro('dvx auth login')
 
   let envUrl = options.url ? validateUrl(options.url) : undefined
   let tenantId = options.tenantId
@@ -342,7 +342,7 @@ export async function authLogin(options: AuthLoginOptions): Promise<void> {
 
   // Step 1: If no URL, sign in and discover environments
   if (!envUrl) {
-    const s = clack.spinner()
+    const s = createSpinner()
     s.start('Signing in to discover environments...')
 
     try {
@@ -352,13 +352,13 @@ export async function authLogin(options: AuthLoginOptions): Promise<void> {
     } catch (err) {
       s.stop('Sign-in failed')
       const message = err instanceof Error ? err.message : String(err)
-      clack.log.warn(`Could not sign in for discovery: ${message}`)
+      logWarn(`Could not sign in for discovery: ${message}`)
 
       envUrl = validateUrl(await promptUrl('Dataverse environment URL'))
     }
 
     if (!envUrl && session) {
-      const s2 = clack.spinner()
+      const s2 = createSpinner()
       s2.start('Discovering environments...')
 
       try {
@@ -368,13 +368,13 @@ export async function authLogin(options: AuthLoginOptions): Promise<void> {
         if (environments.length > 0) {
           envUrl = validateUrl(await selectEnvironment(environments))
         } else {
-          clack.log.warn('No Dataverse environments found for this account.')
+          logWarn('No Dataverse environments found for this account.')
           envUrl = validateUrl(await promptUrl('Dataverse environment URL'))
         }
       } catch (err) {
         s2.stop('Discovery failed')
         const message = err instanceof Error ? err.message : String(err)
-        clack.log.warn(`Discovery failed: ${message}`)
+        logWarn(`Discovery failed: ${message}`)
 
         envUrl = validateUrl(await promptUrl('Dataverse environment URL'))
       }
@@ -389,7 +389,7 @@ export async function authLogin(options: AuthLoginOptions): Promise<void> {
   if (!clientId) {
     try {
       if (!session) {
-        const s = clack.spinner()
+        const s = createSpinner()
         s.start('Signing in for app registration...')
         session = await bootstrapSignIn(tenantId)
         tenantId = session.tenantId
@@ -399,8 +399,8 @@ export async function authLogin(options: AuthLoginOptions): Promise<void> {
       clientId = await provisionViaGraph(session.pca)
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      clack.log.warn(`Automated app registration failed: ${message}`)
-      clack.log.message(MANUAL_INSTRUCTIONS)
+      logWarn(`Automated app registration failed: ${message}`)
+      logInfo(MANUAL_INSTRUCTIONS)
 
       const enteredClientId = await clack.text({ message: 'Enter client ID from app registration' })
       if (clack.isCancel(enteredClientId)) {
@@ -436,12 +436,12 @@ export async function authLogin(options: AuthLoginOptions): Promise<void> {
   const manager = new AuthManager()
   manager.createProfile(profile)
 
-  const s = clack.spinner()
-  s.start('Signing in to Dataverse...')
+  const finalSpinner = createSpinner()
+  finalSpinner.start('Signing in to Dataverse...')
   await manager.getToken(options.name)
-  s.stop('Signed in')
+  finalSpinner.stop('Signed in')
 
-  clack.outro(`Logged in as '${options.name}' → ${envUrl}`)
+  if (isInteractive()) clack.outro(`Logged in as '${options.name}' → ${envUrl}`)
   console.log(JSON.stringify({ profile: options.name, type: 'delegated', status: 'logged_in' }))
 }
 
