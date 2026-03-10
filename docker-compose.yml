@@ -1,0 +1,21 @@
+services:
+  dvx:
+    build:
+      context: .
+      target: production
+    ports:
+      - "3000:3000"
+    environment:
+      - DATAVERSE_URL
+      - DATAVERSE_CLIENT_ID
+      - DATAVERSE_CLIENT_SECRET
+      - DATAVERSE_TENANT_ID
+      - DVX_SCHEMA_CACHE_TTL_MS=300000
+      - DVX_MAX_ROWS=5000
+      - DVX_DEBUG=false
+    volumes:
+      - dvx-cache:/app/.dvx
+    restart: unless-stopped
+
+volumes:
+  dvx-cache:

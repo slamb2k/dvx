@@ -1,0 +1,26 @@
+environments:
+  dev:
+    target: azure-container-apps
+    container_app_name: ca-dvx-dev
+    resource_group: rg-dvx-dev
+    container_app_environment: cae-dvx-dev
+    registry_tag_pattern: "{sha:7}"
+    auto_deploy: true
+    min_replicas: 1
+    max_replicas: 3
+    cpu: "0.5"
+    memory: 1Gi
+    tests: [smoke]
+
+  prod:
+    target: azure-container-apps
+    container_app_name: ca-dvx-prod
+    resource_group: rg-dvx-prod
+    container_app_environment: cae-dvx-prod
+    registry_tag_pattern: "v{version}"
+    auto_deploy: false
+    min_replicas: 2
+    max_replicas: 10
+    cpu: "1.0"
+    memory: 2Gi
+    tests: [smoke-post-deploy]
