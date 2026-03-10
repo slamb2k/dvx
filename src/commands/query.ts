@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { createClient } from '../client/create-client.js'
 import { validateFetchXml } from '../utils/fetchxml.js'
+import { ValidationError } from '../errors.js'
 import { renderTable } from '../utils/table.js'
 import { createSpinner } from '../utils/cli.js'
 
@@ -52,7 +53,7 @@ export async function query(options: QueryOptions): Promise<void> {
     const entityMatch = /entity\s+name=["']([^"']+)["']/i.exec(fetchXmlContent)
     entityName = entityMatch?.[1]
     if (!entityName) {
-      throw new Error('Could not determine entity name from FetchXML')
+      throw new ValidationError('Could not determine entity name from FetchXML')
     }
 
     s.start('Querying...')
@@ -89,7 +90,7 @@ export async function query(options: QueryOptions): Promise<void> {
   }
 
   if (!options.odata) {
-    throw new Error('Either --odata, --fetchxml, or --file is required')
+    throw new ValidationError('Either --odata, --fetchxml, or --file is required')
   }
 
   const odataParts = options.odata.split('?')
@@ -97,7 +98,7 @@ export async function query(options: QueryOptions): Promise<void> {
   const odataQuery = odataParts.slice(1).join('?')
 
   if (!entitySetName) {
-    throw new Error('OData expression must start with the entity set name (e.g., "accounts?$filter=name eq \'test\'")')
+    throw new ValidationError('OData expression must start with the entity set name (e.g., "accounts?$filter=name eq \'test\'")')
   }
 
   const fields = options.fields?.split(',').map((f) => f.trim())
