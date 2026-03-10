@@ -119,6 +119,22 @@ dvx action WinOpportunity --json '{"Status": 3, "OpportunityClose": {...}}'
 dvx action QualifyLead --entity lead --id 00000000-... --json '{...}'
 ```
 
+### 6. Interactive demo
+
+`dvx demo` walks through dvx's differentiators with live Dataverse calls, comparison callouts, and auto-cleanup.
+
+```bash
+# Interactive tier selection (prompts if TTY)
+dvx demo
+
+# Non-interactive — specify tier directly
+dvx demo --tier read    # Schema discovery, OData, FetchXML — no data changes
+dvx demo --tier write   # Read + CRUD lifecycle with [dvx-demo] prefix, auto-cleanup
+dvx demo --tier full    # Write + batch, WhoAmI action, impersonation, aggregation
+```
+
+Each step prints a comparison callout showing what native Dataverse MCP and PAC CLI cannot do. A summary table with pass/skip/fail status and elapsed times is printed at the end.
+
 ## MCP Server
 
 dvx exposes a [Model Context Protocol](https://modelcontextprotocol.io) server for AI agent integration.

@@ -12,6 +12,7 @@ import { upsertRecord } from './commands/upsert.js'
 import { deleteRecord } from './commands/delete.js'
 import { batch } from './commands/batch.js'
 import { actionCommand } from './commands/action.js'
+import { demo } from './commands/demo.js'
 import { completion } from './commands/completion.js'
 import { createRequire } from 'node:module'
 import { setUxOptions, logError, logInfo, stripAnsi } from './utils/cli.js'
@@ -240,6 +241,15 @@ program
   .addOption(new Option('--output <format>', 'Output format: json|table').choices(['json', 'table']).default('table'))
   .action(async (actionName, opts) => {
     await actionCommand(actionName, { json: opts.json, entity: opts.entity, id: opts.id, dryRun: opts.dryRun, callerObjectId: opts.asUser, output: opts.output })
+  })
+
+// Demo
+program
+  .command('demo')
+  .description('Run interactive demo showcasing dvx capabilities')
+  .addOption(new Option('--tier <tier>', 'Demo depth tier').choices(['read', 'write', 'full']))
+  .action(async (opts) => {
+    await demo({ tier: opts.tier })
   })
 
 // MCP server
