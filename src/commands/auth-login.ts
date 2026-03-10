@@ -7,7 +7,7 @@ import { MsalCachePlugin } from '../auth/msal-cache-plugin.js'
 import { createClient } from '../client/create-client.js'
 import { openBrowser } from '../utils/browser.js'
 import { validateUrl } from '../utils/validation.js'
-import * as readline from 'node:readline/promises'
+import { promptUrl, createSpinner } from '../utils/cli.js'
 import * as path from 'node:path'
 
 // Well-known dvx bootstrapper app — multi-tenant, delegated Application.ReadWrite.All + CRM
@@ -35,10 +35,6 @@ export interface AuthLoginOptions {
 interface BootstrapSession {
   pca: PublicClientApplication
   tenantId: string
-}
-
-async function rlPrompt(rl: readline.Interface, question: string): Promise<string> {
-  return (await rl.question(question)).trim()
 }
 
 async function bootstrapSignIn(tenantId: string | undefined): Promise<BootstrapSession> {
@@ -319,11 +315,19 @@ export async function authLogin(options: AuthLoginOptions): Promise<void> {
 
     process.env['DATAVERSE_CLIENT_SECRET'] = clientSecret
 
-    console.error('Validating connection...')
-    const { client } = await createClient()
-    const entityList = await client.listEntities()
-    console.error(`✓ Connected — found ${entityList.length} entities`)
-    console.log(JSON.stringify({ profile: options.name, type: 'service-principal', status: 'logged_in', entityCount: entityList.length }))
+    const spSpinner = createSpinner()
+    spSpinner.start('Validating connection...')
+    let entityCount: number
+    try {
+      const { client } = await createClient()
+      const entityList = await client.listEntities()
+      entityCount = entityList.length
+      spSpinner.stop(`Connected — found ${entityCount} entities`)
+    } catch (err) {
+      spSpinner.error('Connection failed')
+      throw err
+    }
+    console.log(JSON.stringify({ profile: options.name, type: 'service-principal', status: 'logged_in', entityCount }))
     return
   }
 
@@ -350,25 +354,7 @@ export async function authLogin(options: AuthLoginOptions): Promise<void> {
       const message = err instanceof Error ? err.message : String(err)
       clack.log.warn(`Could not sign in for discovery: ${message}`)
 
-      const url = await clack.text({
-        message: 'Dataverse environment URL',
-        placeholder: 'https://org.crm.dynamics.com',
-        validate: (value) => {
-          if (!value) return 'Please enter a valid URL'
-          try {
-            new URL(value)
-          } catch {
-            return 'Please enter a valid URL'
-          }
-        },
-      })
-
-      if (clack.isCancel(url)) {
-        clack.cancel('Login cancelled.')
-        process.exit(0)
-      }
-
-      envUrl = validateUrl(url as string)
+      envUrl = validateUrl(await promptUrl('Dataverse environment URL'))
     }
 
     if (!envUrl && session) {
@@ -383,50 +369,14 @@ export async function authLogin(options: AuthLoginOptions): Promise<void> {
           envUrl = validateUrl(await selectEnvironment(environments))
         } else {
           clack.log.warn('No Dataverse environments found for this account.')
-          const url = await clack.text({
-            message: 'Dataverse environment URL',
-            placeholder: 'https://org.crm.dynamics.com',
-            validate: (value) => {
-              if (!value) return 'Please enter a valid URL'
-              try {
-                new URL(value)
-              } catch {
-                return 'Please enter a valid URL'
-              }
-            },
-          })
-
-          if (clack.isCancel(url)) {
-            clack.cancel('Login cancelled.')
-            process.exit(0)
-          }
-
-          envUrl = validateUrl(url as string)
+          envUrl = validateUrl(await promptUrl('Dataverse environment URL'))
         }
       } catch (err) {
         s2.stop('Discovery failed')
         const message = err instanceof Error ? err.message : String(err)
         clack.log.warn(`Discovery failed: ${message}`)
 
-        const url = await clack.text({
-          message: 'Dataverse environment URL',
-          placeholder: 'https://org.crm.dynamics.com',
-          validate: (value) => {
-            if (!value) return 'Please enter a valid URL'
-            try {
-              new URL(value)
-            } catch {
-              return 'Please enter a valid URL'
-            }
-          },
-        })
-
-        if (clack.isCancel(url)) {
-          clack.cancel('Login cancelled.')
-          process.exit(0)
-        }
-
-        envUrl = validateUrl(url as string)
+        envUrl = validateUrl(await promptUrl('Dataverse environment URL'))
       }
     }
   }
@@ -452,14 +402,20 @@ export async function authLogin(options: AuthLoginOptions): Promise<void> {
       clack.log.warn(`Automated app registration failed: ${message}`)
       clack.log.message(MANUAL_INSTRUCTIONS)
 
-      const rl = readline.createInterface({ input: process.stdin, output: process.stderr })
-      try {
-        clientId = await rlPrompt(rl, 'Enter client ID from app registration: ')
-        if (!tenantId) {
-          tenantId = await rlPrompt(rl, 'Enter Entra tenant ID: ')
+      const enteredClientId = await clack.text({ message: 'Enter client ID from app registration' })
+      if (clack.isCancel(enteredClientId)) {
+        clack.cancel('Login cancelled.')
+        process.exit(0)
+      }
+      clientId = enteredClientId as string
+
+      if (!tenantId) {
+        const enteredTenantId = await clack.text({ message: 'Enter Entra tenant ID' })
+        if (clack.isCancel(enteredTenantId)) {
+          clack.cancel('Login cancelled.')
+          process.exit(0)
         }
-      } finally {
-        rl.close()
+        tenantId = enteredTenantId as string
       }
     }
   }

@@ -19,9 +19,3 @@ export function formatMutationResult(
     }
   }
 }
-
-export function formatErrorAsJson(err: unknown): void {
-  const message = err instanceof Error ? err.message : String(err);
-  const name = err instanceof Error ? err.name : 'Error';
-  console.error(JSON.stringify({ error: name, message }));
-}

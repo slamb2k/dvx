@@ -3,6 +3,7 @@ import { ValidationError } from '../errors.js'
 import { parseJsonPayload } from '../utils/parse-json.js'
 import { formatMutationResult } from '../utils/output.js'
 import { BaseMutationOptions } from './types.js'
+import { createSpinner, logMutationSuccess } from '../utils/cli.js'
 
 interface UpsertOptions extends BaseMutationOptions {
   matchField: string
@@ -31,14 +32,25 @@ export async function upsertRecord(entityName: string, options: UpsertOptions): 
     : String(matchValue)
   const odata = `$filter=${options.matchField} eq ${escapedValue}&$select=${schema.primaryIdAttribute}`
 
-  const records = await client.query(schema.entitySetName, odata, { pageAll: false, maxRows: 1 })
+  const s = createSpinner()
+  s.start(`Upserting ${entityName}...`)
+  try {
+    const records = await client.query(schema.entitySetName, odata, { pageAll: false, maxRows: 1 })
 
-  if (records.length > 0) {
-    const existingId = String(records[0]![schema.primaryIdAttribute])
-    await client.updateRecord(entityName, existingId, data)
-    formatMutationResult({ action: 'updated', id: existingId }, { format: options.output ?? 'table', id: existingId })
-  } else {
-    const id = await client.createRecord(entityName, data)
-    formatMutationResult({ action: 'created', id }, { format: options.output ?? 'table', id })
+    if (records.length > 0) {
+      const existingId = String(records[0]![schema.primaryIdAttribute])
+      await client.updateRecord(entityName, existingId, data)
+      s.stop(`Upserted ${entityName}`)
+      logMutationSuccess(`Upserted ${entityName} ${existingId} (updated)`)
+      formatMutationResult({ action: 'updated', id: existingId }, { format: options.output ?? 'table', id: existingId })
+    } else {
+      const id = await client.createRecord(entityName, data)
+      s.stop(`Upserted ${entityName}`)
+      logMutationSuccess(`Upserted ${entityName} ${id} (created)`)
+      formatMutationResult({ action: 'created', id }, { format: options.output ?? 'table', id })
+    }
+  } catch (err) {
+    s.error('Upsert failed')
+    throw err
   }
 }

@@ -1,18 +1,8 @@
 import { readFileSync } from 'node:fs'
 import { createClient } from '../client/create-client.js'
 import { validateFetchXml } from '../utils/fetchxml.js'
-
-function printTable(records: Record<string, unknown>[]): void {
-  if (records.length === 0) {
-    console.log('No records found.')
-    return
-  }
-  const keys = Object.keys(records[0]!).filter((k) => !k.startsWith('@'))
-  console.log(keys.join('\t'))
-  for (const record of records) {
-    console.log(keys.map((k) => String(record[k] ?? '')).join('\t'))
-  }
-}
+import { renderTable } from '../utils/table.js'
+import { createSpinner } from '../utils/cli.js'
 
 interface QueryOptions {
   odata?: string | undefined
@@ -23,6 +13,16 @@ interface QueryOptions {
   maxRows?: number | undefined
   output: 'json' | 'ndjson' | 'table'
   dryRun?: boolean | undefined
+}
+
+function renderRecordTable(records: Record<string, unknown>[]): void {
+  if (records.length === 0) {
+    console.log('No records found.')
+    return
+  }
+  const keys = Object.keys(records[0]!).filter((k) => !k.startsWith('@'))
+  const rows = records.map((r) => keys.map((k) => String(r[k] ?? '')))
+  console.log(renderTable(rows, keys))
 }
 
 export async function query(options: QueryOptions): Promise<void> {
@@ -44,6 +44,8 @@ export async function query(options: QueryOptions): Promise<void> {
     fetchXmlContent = options.fetchxml
   }
 
+  const s = createSpinner()
+
   if (fetchXmlContent) {
     validateFetchXml(fetchXmlContent)
 
@@ -53,17 +55,34 @@ export async function query(options: QueryOptions): Promise<void> {
       throw new Error('Could not determine entity name from FetchXML')
     }
 
+    s.start('Querying...')
+
     if (options.output === 'ndjson' || options.pageAll) {
-      await client.queryFetchXml(entityName, fetchXmlContent, (record) => {
-        console.log(JSON.stringify(record))
-      })
+      let count = 0
+      try {
+        await client.queryFetchXml(entityName, fetchXmlContent, (record) => {
+          count++
+          console.log(JSON.stringify(record))
+        })
+      } catch (err) {
+        s.error('Query failed')
+        throw err
+      }
+      s.stop(`Query complete: ${count} records`)
     } else {
-      const records = await client.queryFetchXml(entityName, fetchXmlContent)
+      let records: unknown[]
+      try {
+        records = await client.queryFetchXml(entityName, fetchXmlContent)
+      } catch (err) {
+        s.error('Query failed')
+        throw err
+      }
+      s.stop(`Query complete: ${records.length} records`)
 
       if (options.output === 'json') {
         console.log(JSON.stringify(records, null, 2))
       } else {
-        printTable(records as Record<string, unknown>[])
+        renderRecordTable(records as Record<string, unknown>[])
       }
     }
     return
@@ -73,9 +92,6 @@ export async function query(options: QueryOptions): Promise<void> {
     throw new Error('Either --odata, --fetchxml, or --file is required')
   }
 
-  // Extract entity set name from OData expression
-  // The OData expression should be like: entitySetName?$filter=...
-  // Or the user provides the full expression starting with the entity set name
   const odataParts = options.odata.split('?')
   const entitySetName = odataParts[0] ?? ''
   const odataQuery = odataParts.slice(1).join('?')
@@ -86,27 +102,49 @@ export async function query(options: QueryOptions): Promise<void> {
 
   const fields = options.fields?.split(',').map((f) => f.trim())
 
+  s.start('Querying...')
+
   if (options.output === 'ndjson' || options.pageAll) {
-    // Stream mode: emit one record per line
-    await client.query(entitySetName, odataQuery, {
-      fields,
-      pageAll: options.pageAll,
-      maxRows: options.maxRows,
-      onRecord: (record) => {
-        console.log(JSON.stringify(record))
-      },
-    })
+    let count = 0
+    try {
+      await client.query(entitySetName, odataQuery, {
+        fields,
+        pageAll: options.pageAll,
+        maxRows: options.maxRows,
+        onRecord: (record) => {
+          count++
+          console.log(JSON.stringify(record))
+        },
+        onProgress: (info) => {
+          s.message(`Page ${info.pageNumber} — ${info.recordCount} records...`)
+        },
+      })
+    } catch (err) {
+      s.error('Query failed')
+      throw err
+    }
+    s.stop(`Query complete: ${count} records`)
   } else {
-    const records = await client.query(entitySetName, odataQuery, {
-      fields,
-      pageAll: false,
-      maxRows: options.maxRows,
-    })
+    let records: Record<string, unknown>[]
+    try {
+      records = await client.query(entitySetName, odataQuery, {
+        fields,
+        pageAll: false,
+        maxRows: options.maxRows,
+        onProgress: (info) => {
+          s.message(`Page ${info.pageNumber} — ${info.recordCount} records...`)
+        },
+      })
+    } catch (err) {
+      s.error('Query failed')
+      throw err
+    }
+    s.stop(`Query complete: ${records.length} records`)
 
     if (options.output === 'json') {
       console.log(JSON.stringify(records, null, 2))
     } else {
-      printTable(records)
+      renderRecordTable(records)
     }
   }
 }

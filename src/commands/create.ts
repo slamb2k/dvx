@@ -2,6 +2,7 @@ import { createClient } from '../client/create-client.js'
 import { parseJsonPayload } from '../utils/parse-json.js'
 import { formatMutationResult } from '../utils/output.js'
 import { BaseMutationOptions } from './types.js'
+import { createSpinner, logMutationSuccess } from '../utils/cli.js'
 
 interface CreateOptions extends BaseMutationOptions {
   json: string
@@ -12,6 +13,16 @@ export async function createRecord(entityName: string, options: CreateOptions): 
 
   const data = parseJsonPayload(options.json)
 
-  const id = await client.createRecord(entityName, data)
+  const s = createSpinner()
+  s.start(`Creating ${entityName}...`)
+  let id: string
+  try {
+    id = await client.createRecord(entityName, data)
+  } catch (err) {
+    s.error('Create failed')
+    throw err
+  }
+  s.stop(`Created ${entityName}`)
+  logMutationSuccess(`Created ${entityName} ${id}`)
   formatMutationResult(null, { format: options.output ?? 'table', id })
 }
